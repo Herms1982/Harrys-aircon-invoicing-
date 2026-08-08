@@ -30,4 +30,11 @@ jobs:
       with:
         name: app-debug-apk
         path: app/build/outputs/apk/debug/app-debug.apk
+    - name: Make Gradle executable
+      run: chmod +x gradlew
+      working-directory: ./YourFolderName # Replace with your actual subfolder name
+
+    - name: Build Debug APK
+      run: ./gradlew assembleDebug
+      working-directory: ./YourFolderName # Replace with your actual subfolder name
         
