@@ -107,6 +107,8 @@ export interface StockLog {
 
 export interface BusinessSettings {
   businessName: string;
+  siteName?: string;
+  website?: string;
   ownerName: string;
   phone: string;
   email: string;

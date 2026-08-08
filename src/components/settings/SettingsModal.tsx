@@ -16,6 +16,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onResetData,
 }) => {
   const [businessName, setBusinessName] = useState(settings.businessName);
+  const [siteName, setSiteName] = useState(settings.siteName || "Harry's Aircon invoice app");
+  const [website, setWebsite] = useState(settings.website || "https://harrysaircon.co.za");
   const [ownerName, setOwnerName] = useState(settings.ownerName);
   const [phone, setPhone] = useState(settings.phone);
   const [email, setEmail] = useState(settings.email);
@@ -36,6 +38,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const updated: BusinessSettings = {
       ...settings,
       businessName,
+      siteName,
+      website,
       ownerName,
       phone,
       email,
@@ -97,12 +101,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               />
             </div>
             <div>
+              <label className="block text-slate-400 font-medium mb-1">Site / App Name</label>
+              <input
+                type="text"
+                value={siteName}
+                onChange={(e) => setSiteName(e.target.value)}
+                placeholder="e.g. Harry's Aircon invoice app"
+                className="w-full bg-slate-950 border border-slate-700 text-white rounded-lg p-2.5"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
               <label className="block text-slate-400 font-medium mb-1">Owner / Manager Name</label>
               <input
                 type="text"
                 value={ownerName}
                 onChange={(e) => setOwnerName(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 text-white rounded-lg p-2.5"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 font-medium mb-1">Website URL</label>
+              <input
+                type="url"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="e.g. https://harrysaircon.co.za"
+                className="w-full bg-slate-950 border border-slate-700 text-indigo-300 font-mono text-xs rounded-lg p-2.5"
               />
             </div>
           </div>

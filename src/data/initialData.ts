@@ -2,6 +2,8 @@ import { StockItem, Client, CalloutJob, BusinessSettings } from '../types';
 
 export const INITIAL_SETTINGS: BusinessSettings = {
   businessName: "Harry's Aircon Electrical and Solar services",
+  siteName: "Harry's Aircon invoice app",
+  website: "https://harrysaircon.co.za",
   ownerName: 'Harry',
   phone: '+27 11 382 9100',
   email: 'service@harrysaircon.co.za',

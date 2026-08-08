@@ -112,6 +112,7 @@ Thank you for your business!`;
               <p className="text-xs text-slate-600 mt-1">{settings.address}</p>
               <p className="text-xs text-slate-600">
                 Phone: {settings.phone} | Email: {settings.email}
+                {settings.website && ` | Web: ${settings.website}`}
               </p>
               {settings.taxNumber && (
                 <p className="text-xs text-slate-500 font-mono mt-0.5">
