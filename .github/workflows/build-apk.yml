@@ -19,21 +19,17 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Make Gradle executable
-      run: chmod +x gradlew
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
 
     - name: Build Debug APK
-      run: ./gradlew assembleDebug
+      run: gradle assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-debug-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
-    - name: Make Gradle executable
-      run: chmod +x gradlew
-      working-directory: ./YourFolderName # Replace with your actual subfolder name
-
+        path: "**/build/outputs/apk/debug/*.apk"
     - name: Build Debug APK
       run: ./gradlew assembleDebug
       working-directory: ./YourFolderName # Replace with your actual subfolder name
