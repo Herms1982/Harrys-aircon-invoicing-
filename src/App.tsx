@@ -393,6 +393,7 @@ export default function App() {
           setEditingJob(null);
         }}
         onSave={handleSaveJob}
+        onAddNewStockItem={handleSaveStock}
       />
 
       <InvoiceViewModal

@@ -86,9 +86,10 @@ Thank you for your business!`;
             <button
               onClick={handlePrint}
               className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer border border-indigo-400/30"
+              title="Print invoice or save as PDF"
             >
               <Printer className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Print / PDF</span>
+              <span>Print / Save PDF</span>
             </button>
 
             <button
@@ -101,7 +102,7 @@ Thank you for your business!`;
         </div>
 
         {/* PRINTABLE INVOICE SHEET */}
-        <div className="p-6 sm:p-8 bg-white text-slate-900 font-sans space-y-6 overflow-y-auto flex-1 print:p-0">
+        <div className="print-sheet p-6 sm:p-8 bg-white text-slate-900 font-sans space-y-6 overflow-y-auto flex-1 print:p-0">
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-200 pb-6 gap-4">
             <div>

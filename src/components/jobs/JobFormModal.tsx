@@ -11,6 +11,7 @@ interface JobFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (job: CalloutJob, addNewClient?: Client) => void;
+  onAddNewStockItem?: (item: StockItem) => void;
 }
 
 export const JobFormModal: React.FC<JobFormModalProps> = ({
@@ -21,6 +22,7 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  onAddNewStockItem,
 }) => {
   if (!isOpen) return null;
 
@@ -32,6 +34,16 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
   const [newClientName, setNewClientName] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
   const [newClientAddress, setNewClientAddress] = useState('');
+
+  // Inline new stock item state
+  const [isAddingNewStock, setIsAddingNewStock] = useState<boolean>(false);
+  const [newStockName, setNewStockName] = useState('');
+  const [newStockSku, setNewStockSku] = useState('');
+  const [newStockCategory, setNewStockCategory] = useState('Aircon & Cooling');
+  const [newStockCost, setNewStockCost] = useState<number>(100);
+  const [newStockSell, setNewStockSell] = useState<number>(200);
+  const [newStockQty, setNewStockQty] = useState<number>(5);
+  const [newStockUnit, setNewStockUnit] = useState('pcs');
 
   // Job details
   const [invoiceNumber, setInvoiceNumber] = useState(
@@ -133,6 +145,53 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
 
   const handleRemoveStockItem = (index: number) => {
     setUsedStockItems(usedStockItems.filter((_, i) => i !== index));
+  };
+
+  // Handler: Create brand new stock item on the fly and attach to invoice
+  const handleCreateAndAttachNewStock = () => {
+    if (!newStockName.trim()) {
+      alert('Please enter a name for the new stock item.');
+      return;
+    }
+
+    const generatedSku = newStockSku.trim() || `SKU-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newItem: StockItem = {
+      id: `stk-${Date.now()}`,
+      sku: generatedSku,
+      name: newStockName.trim(),
+      category: newStockCategory,
+      costPrice: Math.max(0, newStockCost || 0),
+      sellPrice: Math.max(0, newStockSell || 0),
+      quantity: Math.max(1, newStockQty || 1),
+      minQuantity: 2,
+      unit: newStockUnit.trim() || 'pcs',
+      location: 'Van / Main Stock',
+      notes: `Added during invoice #${invoiceNumber}`,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (onAddNewStockItem) {
+      onAddNewStockItem(newItem);
+    }
+
+    // Automatically append into used stock for this job
+    setUsedStockItems((prev) => [
+      ...prev,
+      {
+        stockItemId: newItem.id,
+        sku: newItem.sku,
+        name: newItem.name,
+        unit: newItem.unit,
+        quantity: 1,
+        unitCost: newItem.costPrice,
+        unitSellPrice: newItem.sellPrice,
+      },
+    ]);
+
+    // Reset inline form
+    setNewStockName('');
+    setNewStockSku('');
+    setIsAddingNewStock(false);
   };
 
   // Handlers for Misc expenses
@@ -494,8 +553,8 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
               </span>
             </div>
 
-            {/* Quick stock selector dropdown */}
-            <div className="flex gap-2">
+            {/* Quick stock selector dropdown & Create stock item button */}
+            <div className="flex flex-col sm:flex-row gap-2">
               <select
                 onChange={(e) => {
                   if (e.target.value) {
@@ -505,7 +564,7 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                 }}
                 className="flex-1 bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-2xl p-3 focus:outline-none focus:border-indigo-500"
               >
-                <option value="">+ Add stock item to callout...</option>
+                <option value="">+ Select existing stock item from catalog...</option>
                 {stockItems.map((item) => (
                   <option key={item.id} value={item.id}>
                     {item.name} ({item.sku}) - {item.quantity} in stock -{' '}
@@ -513,7 +572,157 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                   </option>
                 ))}
               </select>
+
+              <button
+                type="button"
+                onClick={() => setIsAddingNewStock(!isAddingNewStock)}
+                className="px-3.5 py-2.5 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 font-bold text-xs rounded-2xl border border-indigo-500/30 flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-indigo-400" />
+                <span>{isAddingNewStock ? 'Cancel New Stock' : '+ Create New Stock Item'}</span>
+              </button>
             </div>
+
+            {/* Inline New Stock Item Creation Card */}
+            {isAddingNewStock && (
+              <div className="bg-slate-900 border border-indigo-500/40 p-4 rounded-2xl space-y-3 shadow-lg">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <span className="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+                    <Package className="w-4 h-4 text-indigo-400" />
+                    <span>Quick Add New Part to Inventory & Invoice</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingNewStock(false)}
+                    className="text-slate-400 hover:text-white text-xs font-bold px-2 py-0.5"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">
+                      Item / Part Name *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Copper Pipe 1/2 inch 5m"
+                      value={newStockName}
+                      onChange={(e) => setNewStockName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-white font-bold p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">
+                        Part SKU / Code
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Auto SKU"
+                        value={newStockSku}
+                        onChange={(e) => setNewStockSku(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-indigo-400 font-mono font-bold p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">
+                        Category
+                      </label>
+                      <select
+                        value={newStockCategory}
+                        onChange={(e) => setNewStockCategory(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-white p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
+                      >
+                        <option value="Aircon & Cooling">Aircon & Cooling</option>
+                        <option value="Electrical">Electrical</option>
+                        <option value="Solar & Inverters">Solar & Inverters</option>
+                        <option value="Plumbing">Plumbing</option>
+                        <option value="Gas & Refrigerant">Gas & Refrigerant</option>
+                        <option value="Hardware & Fasteners">Hardware & Fasteners</option>
+                        <option value="Tools & Spares">Tools & Spares</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">
+                      Cost Price ({settings.currencySymbol})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={newStockCost}
+                      onChange={(e) => setNewStockCost(parseFloat(e.target.value) || 0)}
+                      className="w-full bg-slate-950 border border-slate-800 text-rose-400 font-mono font-bold p-2 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">
+                      Client Sell ({settings.currencySymbol})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={newStockSell}
+                      onChange={(e) => setNewStockSell(parseFloat(e.target.value) || 0)}
+                      className="w-full bg-slate-950 border border-slate-800 text-emerald-400 font-mono font-bold p-2 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">
+                      Qty Stocked
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={newStockQty}
+                      onChange={(e) => setNewStockQty(parseInt(e.target.value) || 1)}
+                      className="w-full bg-slate-950 border border-slate-800 text-white font-mono p-2 rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[9px] uppercase font-bold text-slate-400 mb-0.5">
+                      Unit
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="pcs, m, set"
+                      value={newStockUnit}
+                      onChange={(e) => setNewStockUnit(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-white p-2 rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingNewStock(false)}
+                    className="px-3 py-1.5 bg-slate-800 text-slate-300 font-bold rounded-xl text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateAndAttachNewStock}
+                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow border border-indigo-400/30 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Save Stock & Attach to Invoice</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Used stock table */}
             {usedStockItems.length === 0 ? (
