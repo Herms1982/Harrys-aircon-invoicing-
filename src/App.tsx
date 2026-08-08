@@ -22,12 +22,13 @@ import {
   saveStoredSettings,
   getStoredLogs,
   saveStoredLogs,
+  clearAllDemoData,
   resetAllData,
   handleStockForJobStatusChange,
 } from './lib/storage';
 
 import { StockItem, Client, CalloutJob, BusinessSettings, StockLog, JobStatus } from './types';
-import { ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('jobs');
@@ -54,7 +55,7 @@ export default function App() {
 
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
 
-  // Sync to localStorage
+  // Sync state changes to localStorage
   useEffect(() => {
     saveStoredStock(stock);
   }, [stock]);
@@ -117,11 +118,29 @@ export default function App() {
     if (message) {
       showToast(message);
     } else {
-      showToast(`Callout ${updatedJob.invoiceNumber} saved successfully!`);
+      showToast(`Callout ${updatedJob.invoiceNumber} saved!`);
     }
 
     // Auto open invoice preview
     setViewingInvoiceJob(updatedJob);
+  };
+
+  // Handler: Delete Job
+  const handleDeleteJob = (jobId: string) => {
+    const job = callouts.find((j) => j.id === jobId);
+    if (!job) return;
+
+    if (job.stockDeducted) {
+      const { updatedStock, updatedLogs } = handleStockForJobStatusChange(job, 'Cancelled', stock, logs);
+      setStock(updatedStock);
+      setLogs(updatedLogs);
+    }
+
+    setCallouts((prev) => prev.filter((j) => j.id !== jobId));
+    if (viewingInvoiceJob?.id === jobId) {
+      setViewingInvoiceJob(null);
+    }
+    showToast(`Deleted callout ${job.invoiceNumber}.`);
   };
 
   // Handler: Change job status from list or invoice view (e.g. Mark Paid)
@@ -187,7 +206,31 @@ export default function App() {
     showToast(`Saved stock item: ${savedItem.name}`);
   };
 
-  // Handler: Reset Data
+  // Handler: Delete stock item
+  const handleDeleteStockItem = (stockItemId: string) => {
+    const item = stock.find((s) => s.id === stockItemId);
+    setStock((prev) => prev.filter((s) => s.id !== stockItemId));
+    showToast(`Deleted "${item?.name || 'stock item'}" from inventory.`);
+  };
+
+  // Handler: Delete Client
+  const handleDeleteClient = (clientId: string) => {
+    const client = clients.find((c) => c.id === clientId);
+    setClients((prev) => prev.filter((c) => c.id !== clientId));
+    showToast(`Deleted client "${client?.name || 'record'}".`);
+  };
+
+  // Handler: Clear Demo Data
+  const handleClearDemoData = () => {
+    clearAllDemoData();
+    setStock([]);
+    setClients([]);
+    setCallouts([]);
+    setLogs([]);
+    showToast('All demo and sample records cleared.');
+  };
+
+  // Handler: Reset All Data
   const handleResetData = () => {
     resetAllData();
     window.location.reload();
@@ -265,6 +308,7 @@ export default function App() {
                   setEditingJob(job);
                   setIsJobModalOpen(true);
                 }}
+                onDeleteJob={handleDeleteJob}
                 onStatusChange={handleJobStatusChange}
               />
             )}
@@ -281,6 +325,7 @@ export default function App() {
                   setEditingStockItem(item);
                   setIsStockModalOpen(true);
                 }}
+                onDeleteStock={handleDeleteStockItem}
                 onAdjustStockQty={handleAdjustStockQty}
                 onOpenLogs={() => setIsLogsModalOpen(true)}
               />
@@ -299,6 +344,7 @@ export default function App() {
                   setClients((prev) => prev.map((item) => (item.id === c.id ? c : item)));
                   showToast(`Updated client: ${c.name}`);
                 }}
+                onDeleteClient={handleDeleteClient}
                 onViewInvoice={(job) => setViewingInvoiceJob(job)}
               />
             )}
@@ -319,6 +365,7 @@ export default function App() {
                   setSettings(s);
                   showToast('Updated business preferences!');
                 }}
+                onClearDemoData={handleClearDemoData}
                 onResetData={handleResetData}
               />
             )}

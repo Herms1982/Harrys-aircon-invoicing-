@@ -1,6 +1,6 @@
 {
-  "name": "Stock & Callout Invoicer",
-  "description": "Mobile app for tracking business stock, client callouts, travel fuel costs, time on site, auto-subtracting inventory, and calculating client invoice totals and net profit.",
+  "name": "Harry's Aircon Electrical and Solar services",
+  "description": "Mobile app for Harry's Aircon Electrical and Solar services to manage parts stock, client callouts, travel fuel costs, time on site, auto-subtracting inventory, and calculating client invoice totals and net profit.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

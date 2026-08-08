@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { Settings, Save, RefreshCw, Check, Building, Fuel, Clock, DollarSign } from 'lucide-react';
+import { Settings, Save, RefreshCw, Check, Building, Fuel, Clock, DollarSign, Trash2, ShieldCheck } from 'lucide-react';
 import { BusinessSettings } from '../../types';
 
 interface SettingsModalProps {
   settings: BusinessSettings;
   onSaveSettings: (settings: BusinessSettings) => void;
+  onClearDemoData?: () => void;
   onResetData: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onSaveSettings,
+  onClearDemoData,
   onResetData,
 }) => {
   const [businessName, setBusinessName] = useState(settings.businessName);
@@ -56,7 +58,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <div className="space-y-4 pb-20 max-w-3xl mx-auto">
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-2xl p-4 shadow-lg text-slate-100">
-        <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
+        <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
           System Preferences
         </span>
         <h2 className="text-lg font-bold text-white mt-0.5">
@@ -67,11 +69,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </p>
       </div>
 
+      {/* Storage Indicator */}
+      <div className="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-2xl flex items-center justify-between text-xs text-emerald-300">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span><strong>Auto-Save Active:</strong> All changes, clients, stock, and callouts save automatically to phone local storage.</span>
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">
         {/* Business Info */}
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
-          <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Building className="w-4 h-4 text-amber-400" />
+          <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Building className="w-4 h-4 text-indigo-400" />
             <span>Company Details (Printed on Invoices)</span>
           </h3>
 
@@ -140,8 +150,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* Currency & Rates */}
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
-          <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-            <DollarSign className="w-4 h-4 text-amber-400" />
+          <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+            <DollarSign className="w-4 h-4 text-indigo-400" />
             <span>Currency & Preset Callout Rates</span>
           </h3>
 
@@ -151,7 +161,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <select
                 value={currencySymbol}
                 onChange={(e) => setCurrencySymbol(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 text-amber-400 font-bold rounded-lg p-2.5"
+                className="w-full bg-slate-950 border border-slate-700 text-indigo-400 font-bold rounded-lg p-2.5"
               >
                 <option value="R">R (ZAR - South Africa)</option>
                 <option value="$">$ (USD / CAD / AUD)</option>
@@ -177,7 +187,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
             <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
               <span className="text-slate-300 font-semibold block flex items-center gap-1">
-                <Fuel className="w-3.5 h-3.5 text-amber-400" /> Travel Rates per km
+                <Fuel className="w-3.5 h-3.5 text-indigo-400" /> Travel Rates per km
               </span>
 
               <div className="grid grid-cols-2 gap-2">
@@ -208,7 +218,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
             <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
               <span className="text-slate-300 font-semibold block flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5 text-amber-400" /> Labor Rates per hour
+                <Clock className="w-3.5 h-3.5 text-indigo-400" /> Labor Rates per hour
               </span>
 
               <div className="grid grid-cols-2 gap-2">
@@ -240,27 +250,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Submit & Reset Buttons */}
-        <div className="flex items-center justify-between gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm('Are you sure you want to reset all data back to factory defaults?')) {
-                onResetData();
-              }
-            }}
-            className="text-xs bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Reset Demo Data</span>
-          </button>
+        <div className="flex items-center justify-between gap-3 pt-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            {onClearDemoData && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('Are you sure you want to clear all stock, client, and callout data?')) {
+                    onClearDemoData();
+                  }
+                }}
+                className="text-xs bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 px-3.5 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer font-semibold"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear All Demo Data</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm('Are you sure you want to reset all data and preferences back to default?')) {
+                  onResetData();
+                }
+              }}
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2.5 rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Reset All Data</span>
+            </button>
+          </div>
 
           <button
             type="submit"
-            className="bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-slate-950 font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-amber-500/20 flex items-center gap-2 transition-all cursor-pointer"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-indigo-900/40 flex items-center gap-2 transition-all cursor-pointer border border-indigo-400/30"
           >
             {savedSuccess ? (
               <>
-                <Check className="w-4 h-4 text-emerald-950 stroke-[3]" />
+                <Check className="w-4 h-4 text-emerald-400 stroke-[3]" />
                 <span>Settings Saved!</span>
               </>
             ) : (

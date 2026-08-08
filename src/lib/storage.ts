@@ -9,13 +9,23 @@ const KEYS = {
   LOGS: 'stock_app_logs_v1',
 };
 
+// Demo ID detection
+const isDemoId = (id: string) => /^(stk|cli|job|log)-[1-9]$/.test(id) || id.startsWith('job-100');
+
 // Helper getters
 export function getStoredStock(): StockItem[] {
   try {
     const data = localStorage.getItem(KEYS.STOCK);
-    return data ? JSON.parse(data) : INITIAL_STOCK;
+    if (!data) return [];
+    const parsed: StockItem[] = JSON.parse(data);
+    // Filter out old pre-populated demo items if present
+    const cleaned = parsed.filter((item) => !isDemoId(item.id));
+    if (cleaned.length !== parsed.length) {
+      saveStoredStock(cleaned);
+    }
+    return cleaned;
   } catch {
-    return INITIAL_STOCK;
+    return [];
   }
 }
 
@@ -26,9 +36,16 @@ export function saveStoredStock(stock: StockItem[]) {
 export function getStoredClients(): Client[] {
   try {
     const data = localStorage.getItem(KEYS.CLIENTS);
-    return data ? JSON.parse(data) : INITIAL_CLIENTS;
+    if (!data) return [];
+    const parsed: Client[] = JSON.parse(data);
+    // Filter out old pre-populated demo items if present
+    const cleaned = parsed.filter((item) => !isDemoId(item.id));
+    if (cleaned.length !== parsed.length) {
+      saveStoredClients(cleaned);
+    }
+    return cleaned;
   } catch {
-    return INITIAL_CLIENTS;
+    return [];
   }
 }
 
@@ -39,9 +56,15 @@ export function saveStoredClients(clients: Client[]) {
 export function getStoredCallouts(): CalloutJob[] {
   try {
     const data = localStorage.getItem(KEYS.CALLOUTS);
-    return data ? JSON.parse(data) : INITIAL_CALLOUTS;
+    if (!data) return [];
+    const parsed: CalloutJob[] = JSON.parse(data);
+    const cleaned = parsed.filter((item) => !isDemoId(item.id));
+    if (cleaned.length !== parsed.length) {
+      saveStoredCallouts(cleaned);
+    }
+    return cleaned;
   } catch {
-    return INITIAL_CALLOUTS;
+    return [];
   }
 }
 
@@ -54,8 +77,18 @@ export function getStoredSettings(): BusinessSettings {
     const data = localStorage.getItem(KEYS.SETTINGS);
     if (data) {
       const settings = JSON.parse(data);
+      let updated = false;
       if (settings.currencySymbol === '$' || !settings.currencySymbol) {
         settings.currencySymbol = 'R';
+        updated = true;
+      }
+      if (settings.businessName === 'Vanguard Technical & Electrical Services' || !settings.businessName) {
+        settings.businessName = INITIAL_SETTINGS.businessName;
+        settings.ownerName = INITIAL_SETTINGS.ownerName;
+        settings.email = INITIAL_SETTINGS.email;
+        updated = true;
+      }
+      if (updated) {
         saveStoredSettings(settings);
       }
       return settings;
@@ -73,28 +106,13 @@ export function saveStoredSettings(settings: BusinessSettings) {
 export function getStoredLogs(): StockLog[] {
   try {
     const data = localStorage.getItem(KEYS.LOGS);
-    return data ? JSON.parse(data) : [
-      {
-        id: 'log-1',
-        stockItemId: 'stk-1',
-        stockItemName: '3-Phase Main Circuit Breaker 63A',
-        changeQuantity: -1,
-        newQuantity: 14,
-        reason: 'Job Invoiced',
-        jobInvoiceNumber: 'INV-2026-1001',
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'log-2',
-        stockItemId: 'stk-7',
-        stockItemName: 'Surge Protection Device (SPD) 40kA',
-        changeQuantity: -2,
-        newQuantity: 9,
-        reason: 'Job Invoiced',
-        jobInvoiceNumber: 'INV-2026-1001',
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-    ];
+    if (!data) return [];
+    const parsed: StockLog[] = JSON.parse(data);
+    const cleaned = parsed.filter((item) => !isDemoId(item.id));
+    if (cleaned.length !== parsed.length) {
+      saveStoredLogs(cleaned);
+    }
+    return cleaned;
   } catch {
     return [];
   }
@@ -102,6 +120,13 @@ export function getStoredLogs(): StockLog[] {
 
 export function saveStoredLogs(logs: StockLog[]) {
   localStorage.setItem(KEYS.LOGS, JSON.stringify(logs));
+}
+
+export function clearAllDemoData() {
+  saveStoredStock([]);
+  saveStoredClients([]);
+  saveStoredCallouts([]);
+  saveStoredLogs([]);
 }
 
 export function resetAllData() {

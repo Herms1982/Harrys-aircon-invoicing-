@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, ShieldAlert, Package, TrendingUp, RefreshCw, History, Edit, Trash2, ArrowUpRight, AlertTriangle } from 'lucide-react';
+import { Plus, Search, ShieldAlert, Package, TrendingUp, RefreshCw, History, Edit, Trash2, ArrowUpRight, AlertTriangle, Boxes } from 'lucide-react';
 import { StockItem, BusinessSettings } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
 
@@ -8,6 +8,7 @@ interface InventoryListProps {
   settings: BusinessSettings;
   onAddStock: () => void;
   onEditStock: (item: StockItem) => void;
+  onDeleteStock?: (id: string) => void;
   onAdjustStockQty: (itemId: string, changeQty: number, reason: string) => void;
   onOpenLogs: () => void;
 }
@@ -17,6 +18,7 @@ export const InventoryList: React.FC<InventoryListProps> = ({
   settings,
   onAddStock,
   onEditStock,
+  onDeleteStock,
   onAdjustStockQty,
   onOpenLogs,
 }) => {
@@ -47,9 +49,17 @@ export const InventoryList: React.FC<InventoryListProps> = ({
   const totalRetailValue = stock.reduce((sum, item) => sum + item.quantity * item.sellPrice, 0);
   const lowStockCount = stock.filter((item) => item.quantity <= item.minQuantity).length;
 
+  const handleDelete = (item: StockItem) => {
+    if (confirm(`Are you sure you want to delete "${item.name}" from stock inventory?`)) {
+      if (onDeleteStock) {
+        onDeleteStock(item.id);
+      }
+    }
+  };
+
   return (
     <div className="space-y-4 pb-20">
-      {/* Header Banner (Bento Header Cell) */}
+      {/* Header Banner */}
       <div className="bg-slate-900/50 rounded-3xl border border-slate-800 p-5 shadow-xl text-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <label className="text-[10px] uppercase tracking-widest text-indigo-400 font-bold mb-1 block">
@@ -134,35 +144,52 @@ export const InventoryList: React.FC<InventoryListProps> = ({
           />
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`text-xs px-3.5 py-2 rounded-2xl font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${
-                selectedCategory === cat
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'bg-slate-900/60 text-slate-400 border border-slate-800 hover:text-slate-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-          {showLowStockOnly && (
-            <button
-              onClick={() => setShowLowStockOnly(false)}
-              className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-2 rounded-2xl font-bold uppercase tracking-wider"
-            >
-              Low Stock Only (Clear)
-            </button>
-          )}
-        </div>
+        {categories.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`text-xs px-3.5 py-2 rounded-2xl font-bold uppercase tracking-wider whitespace-nowrap transition-all cursor-pointer ${
+                  selectedCategory === cat
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                    : 'bg-slate-900/60 text-slate-400 border border-slate-800 hover:text-slate-200'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+            {showLowStockOnly && (
+              <button
+                onClick={() => setShowLowStockOnly(false)}
+                className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-2 rounded-2xl font-bold uppercase tracking-wider"
+              >
+                Low Stock Only (Clear)
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stock Cards Bento Grid */}
       {filteredStock.length === 0 ? (
-        <div className="bg-slate-900/30 border border-dashed border-slate-800 rounded-3xl p-8 text-center">
-          <p className="text-slate-400 text-sm">No stock items found matching your filter.</p>
+        <div className="bg-slate-900/30 border border-dashed border-slate-800 rounded-3xl p-8 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
+            <Boxes className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">No Stock Items in Catalog</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              You currently have no inventory parts listed. Add parts to automatically deduct stock on callouts.
+            </p>
+          </div>
+          <button
+            onClick={onAddStock}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-2xl text-xs shadow-lg inline-flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Add First Stock Item</span>
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -194,12 +221,24 @@ export const InventoryList: React.FC<InventoryListProps> = ({
                       </h3>
                     </div>
 
-                    <button
-                      onClick={() => onEditStock(item)}
-                      className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition-colors"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => onEditStock(item)}
+                        className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition-colors"
+                        title="Edit Item"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      {onDeleteStock && (
+                        <button
+                          onClick={() => handleDelete(item)}
+                          className="text-rose-400 hover:text-rose-300 p-1.5 rounded-xl hover:bg-rose-950/50 transition-colors"
+                          title="Delete Item"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Stock Quantity Badge */}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Calendar, MapPin, Clock, PackageCheck, FileText, CheckCircle2, Clock3, AlertCircle, DollarSign, TrendingUp, ChevronRight } from 'lucide-react';
+import { Plus, Search, Calendar, MapPin, Clock, PackageCheck, FileText, CheckCircle2, Clock3, AlertCircle, DollarSign, TrendingUp, ChevronRight, Trash2 } from 'lucide-react';
 import { CalloutJob, JobStatus, BusinessSettings } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
 
@@ -9,6 +9,7 @@ interface JobListProps {
   onNewJob: () => void;
   onViewInvoice: (job: CalloutJob) => void;
   onEditJob: (job: CalloutJob) => void;
+  onDeleteJob?: (jobId: string) => void;
   onStatusChange: (job: CalloutJob, newStatus: JobStatus) => void;
 }
 
@@ -18,6 +19,7 @@ export const JobList: React.FC<JobListProps> = ({
   onNewJob,
   onViewInvoice,
   onEditJob,
+  onDeleteJob,
   onStatusChange,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -44,6 +46,14 @@ export const JobList: React.FC<JobListProps> = ({
       ? filteredJobs.reduce((sum, j) => sum + j.profitMarginPercent, 0) /
         filteredJobs.length
       : 0;
+
+  const handleDelete = (job: CalloutJob) => {
+    if (confirm(`Are you sure you want to delete callout job "${job.invoiceNumber} - ${job.jobTitle}"?`)) {
+      if (onDeleteJob) {
+        onDeleteJob(job.id);
+      }
+    }
+  };
 
   const getStatusBadge = (status: JobStatus) => {
     switch (status) {
@@ -76,7 +86,7 @@ export const JobList: React.FC<JobListProps> = ({
 
   return (
     <div className="space-y-4 pb-20">
-      {/* Quick Callout Action Banner (Bento Header Cell) */}
+      {/* Quick Callout Action Banner */}
       <div className="bg-slate-900/50 rounded-3xl border border-slate-800 p-5 shadow-xl text-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <label className="text-[10px] uppercase tracking-widest text-indigo-400 font-bold mb-1 block">
@@ -98,7 +108,7 @@ export const JobList: React.FC<JobListProps> = ({
         </button>
       </div>
 
-      {/* Financial Quick Metrics Cards (Bento Metric Cells) */}
+      {/* Financial Quick Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-3xl flex flex-col justify-between">
           <label className="text-[10px] uppercase tracking-widest text-slate-400 font-bold block">
@@ -170,13 +180,22 @@ export const JobList: React.FC<JobListProps> = ({
 
       {/* Jobs List Bento Cards */}
       {filteredJobs.length === 0 ? (
-        <div className="bg-slate-900/30 border border-dashed border-slate-800 rounded-3xl p-8 text-center">
-          <p className="text-slate-400 text-sm">No callout jobs found matching your filter.</p>
+        <div className="bg-slate-900/30 border border-dashed border-slate-800 rounded-3xl p-8 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
+            <FileText className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">No Callout Jobs Found</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              You haven't logged any callout jobs yet. Click below to create your first client callout invoice.
+            </p>
+          </div>
           <button
             onClick={onNewJob}
-            className="mt-3 text-xs bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 font-semibold px-4 py-2 rounded-xl inline-flex items-center gap-1 hover:bg-indigo-600/30 transition-colors"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-2xl text-xs shadow-lg inline-flex items-center gap-1.5 transition-all cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" /> Log a Callout
+            <Plus className="w-4 h-4 stroke-[3]" />
+            <span>Create New Callout Job</span>
           </button>
         </div>
       ) : (
@@ -249,13 +268,22 @@ export const JobList: React.FC<JobListProps> = ({
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => onEditJob(job)}
-                      className="text-xs text-slate-400 hover:text-white px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors font-medium"
+                      className="text-xs text-slate-400 hover:text-white px-2.5 py-1.5 rounded-xl hover:bg-slate-800 transition-colors font-medium"
                     >
                       Edit
                     </button>
+                    {onDeleteJob && (
+                      <button
+                        onClick={() => handleDelete(job)}
+                        className="text-xs text-rose-400 hover:text-rose-300 p-1.5 rounded-xl hover:bg-rose-950/50 transition-colors"
+                        title="Delete Job"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     <button
                       onClick={() => onViewInvoice(job)}
                       className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3.5 py-1.5 rounded-xl border border-indigo-400/30 flex items-center gap-1 transition-colors cursor-pointer shadow-sm"
