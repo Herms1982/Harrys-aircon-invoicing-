@@ -30,7 +30,8 @@ jobs:
         run: npm install -g @bubblewrap/cli
 
       - name: Build APK with Bubblewrap
-        run: bubblewrap build
+        # The 'yes' command automatically answers 'Y' to all Bubblewrap setup prompts
+        run: yes | bubblewrap build
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
