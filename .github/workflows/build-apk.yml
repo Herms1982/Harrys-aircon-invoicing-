@@ -29,38 +29,30 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - name: Generate Android Project & Build APK
-        run: |
-          # 1. Pre-configure JDK and Android SDK paths
-          mkdir -p ~/.bubblewrap
-          echo "{\"jdkPath\":\"$JAVA_HOME\",\"androidSdkPath\":\"$ANDROID_HOME\"}" > ~/.bubblewrap/config.json
-
-          # 2. Pre-create the directory so Bubblewrap doesn't ask to create it
-          mkdir -p android-project
-
-          # 3. Initialize Bubblewrap non-interactively
-          npx @bubblewrap/cli init --manifest=dist/manifest.json --directory=android-project --skipKeytool
-
-          # 4. Build the APK without asking for key signatures
-          cd android-project
-          npx @bubblewrap/cli build --skipSigning
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Bubblewrap CLI
-        run: npm install -g @bubblewrap/cli
+      - name: Install Bubblewrap & Serve CLI
+        run: npm install -g @bubblewrap/cli serve
 
       - name: Generate Android Project & Build APK
         run: |
-          # Create Bubblewrap configuration to skip interactive JDK/SDK setup prompts
+          # 1. Start a local web server in the background to host dist/
+          npx serve -s dist -l 8080 &
+          sleep 3
+
+          # 2. Pre-configure JDK and Android SDK paths
           mkdir -p ~/.bubblewrap
           echo "{\"jdkPath\":\"$JAVA_HOME\",\"androidSdkPath\":\"$ANDROID_HOME\"}" > ~/.bubblewrap/config.json
 
-          # Initialize Bubblewrap using manifest non-interactively
-          npx @bubblewrap/cli init --manifest=dist/manifest.json --directory=android-project --skipKeytool
-          
-          # Build APK without asking for signing keys
+          # 3. Pre-create project folder
+          mkdir -p android-project
+
+          # 4. Initialize Bubblewrap using local server URL
+          npx @bubblewrap/cli init --manifest=http://localhost:8080/manifest.json --directory=android-project --skipKeytool
+
+          # 5. Build APK
           cd android-project
           npx @bubblewrap/cli build --skipSigning
 
@@ -69,4 +61,3 @@ jobs:
         with:
           name: pwa-android-apk
           path: "**/build/outputs/apk/**/*.apk"
-          
