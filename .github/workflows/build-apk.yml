@@ -33,17 +33,14 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install PWABuilder CLI & Serve
-        run: npm install -g @pwabuilder/cli serve
-
       - name: Generate Android APK
         run: |
           # 1. Host web app locally
           npx serve -s dist -l 8080 &
           sleep 3
 
-          # 2. Build Android package using PWABuilder non-interactively
-          pwa-builder http://localhost:8080/manifest.json -p android -o android-build
+          # 2. Build Android package using PWABuilder via npx
+          npx @pwabuilder/cli http://localhost:8080/manifest.json -p android -o android-build
 
           # 3. Compile the debug APK using Gradle
           cd android-build
