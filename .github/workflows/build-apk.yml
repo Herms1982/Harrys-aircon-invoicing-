@@ -18,7 +18,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install dependencies & Build Web App
         run: |
@@ -34,6 +33,27 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install Bubblewrap CLI
+        run: npm install -g @bubblewrap/cli
+
+      - name: Generate Android Project & Build APK
+        run: |
+          # Create Bubblewrap configuration to skip interactive JDK/SDK setup prompts
+          mkdir -p ~/.bubblewrap
+          echo "{\"jdkPath\":\"$JAVA_HOME\",\"androidSdkPath\":\"$ANDROID_HOME\"}" > ~/.bubblewrap/config.json
+
+          # Initialize Bubblewrap using manifest non-interactively
+          npx @bubblewrap/cli init --manifest=dist/manifest.json --directory=android-project --skipKeytool
+          
+          # Build APK without asking for signing keys
+          cd android-project
+          npx @bubblewrap/cli build --skipSigning
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-android-apk
+          path: "**/build/outputs/apk/**/*.apk"
       - name: Install Bubblewrap CLI
         run: npm install -g @bubblewrap/cli
 
