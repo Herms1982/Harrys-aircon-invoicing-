@@ -20,11 +20,10 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci || npm install
-
-      - name: Build Web Application
-        run: npm run build
+      - name: Install dependencies & Build Web App
+        run: |
+          npm ci || npm install
+          npm run build
 
       - name: Set up Java JDK
         uses: actions/setup-java@v4
@@ -32,8 +31,23 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Bubblewrap CLI & PWABuilder Tools
+      - name: Install Bubblewrap CLI
         run: npm install -g @bubblewrap/cli
+
+      - name: Generate Android Project & Build APK
+        run: |
+          # Initialize Bubblewrap project from web manifest
+          npx @bubblewrap/cli init --manifest=dist/manifest.json --directory=android-project --skipKeytool
+          
+          # Navigate into generated android folder and build APK
+          cd android-project
+          npx @bubblewrap/cli build
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-android-apk
+          path: android-project/*.apk
 
       - name: Verify Web Build Manifest & SW
         run: |
