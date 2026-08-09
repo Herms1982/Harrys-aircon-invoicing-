@@ -33,31 +33,25 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Bubblewrap & Serve CLI
-        run: npm install -g @bubblewrap/cli serve
+      - name: Install PWABuilder CLI & Serve
+        run: npm install -g @pwabuilder/cli serve
 
-      - name: Generate Android Project & Build APK
+      - name: Generate Android APK
         run: |
-          # 1. Start a local web server in the background to host dist/
+          # 1. Host web app locally
           npx serve -s dist -l 8080 &
           sleep 3
 
-          # 2. Pre-configure JDK and Android SDK paths
-          mkdir -p ~/.bubblewrap
-          echo "{\"jdkPath\":\"$JAVA_HOME\",\"androidSdkPath\":\"$ANDROID_HOME\"}" > ~/.bubblewrap/config.json
+          # 2. Build Android package using PWABuilder non-interactively
+          pwa-builder http://localhost:8080/manifest.json -p android -o android-build
 
-          # 3. Pre-create project folder
-          mkdir -p android-project
-
-          # 4. Initialize Bubblewrap using local server URL
-          npx @bubblewrap/cli init --manifest=http://localhost:8080/manifest.json --directory=android-project --skipKeytool
-
-          # 5. Build APK
-          cd android-project
-          npx @bubblewrap/cli build --skipSigning
+          # 3. Compile the debug APK using Gradle
+          cd android-build
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: pwa-android-apk
-          path: "**/build/outputs/apk/**/*.apk"
+          path: "**/build/outputs/apk/debug/*.apk"
