@@ -33,17 +33,21 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Generate Android APK
+      - name: Install Capacitor & Generate Android Project
         run: |
-          # 1. Host web app locally
-          npx serve -s dist -l 8080 &
-          sleep 3
+          # Install Capacitor CLI
+          npm install @capacitor/core @capacitor/cli @capacitor/android
 
-          # 2. Build Android project using corrected PWABuilder flags
-          npx @pwabuilder/cli --url http://localhost:8080/manifest.json --platform android --output android-build
+          # Initialize Capacitor with App Name and ID
+          npx cap init "MyApp" "com.example.myapp" --web-dir dist
 
-          # 3. Compile the debug APK using Gradle
-          cd android-build
+          # Add Android platform and copy web build
+          npx cap add android
+          npx cap copy android
+
+      - name: Build APK with Gradle
+        run: |
+          cd android
           chmod +x gradlew
           ./gradlew assembleDebug
 
@@ -51,4 +55,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pwa-android-apk
-          path: "**/build/outputs/apk/debug/*.apk"
+          path: "android/app/build/outputs/apk/debug/*.apk"
