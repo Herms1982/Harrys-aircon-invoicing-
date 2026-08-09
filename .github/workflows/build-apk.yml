@@ -1,58 +1,45 @@
-name: Build Android APK
+name: Build PWA Android APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
-  build-apk:
-    name: Build PWA Android APK
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies & Build Web App
-        run: |
-          npm ci || npm install
-          npm run build
-
-      - name: Set up Java JDK 21
+      - name: Set up Java JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-      - name: Install Capacitor & Wrap Web App
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew || true
+
+      - name: Fix Kotlin Stdlib Duplicate Class Resolution Strategy
         run: |
-          # Install Capacitor CLI & plugins locally
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-
-          # Initialize Capacitor project targeting the dist folder
-          npx cap init "MyApp" "com.example.myapp" --web-dir dist
-
-          # Add Android platform target and sync assets
-          npx cap add android
-          npx cap copy android
+          if [ -f "build.gradle" ]; then
+            echo 'subprojects { configurations.all { resolutionStrategy { force "org.jetbrains.kotlin:kotlin-stdlib:1.8.22", "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.22", "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.22" } } }' >> build.gradle
+          fi
 
       - name: Build APK with Gradle
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleDebug
+        run: ./gradlew assembleRelease --stacktrace
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pwa-android-apk
-          path: "android/app/build/outputs/apk/debug/*.apk"
+          name: app-release-apk
+          path: app/build/outputs/apk/release/*.apk
