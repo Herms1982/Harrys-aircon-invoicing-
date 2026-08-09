@@ -1,103 +1,15 @@
-name: Build Android APK
-
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
-
-jobs:
-  build-apk:
-    name: Build PWA Android APK
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies & Build Web App
-        run: |
-          npm ci || npm install
-          npm run build
-
-      - name: Set up Java JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Bubblewrap CLI
-        run: npm install -g @bubblewrap/cli
-
       - name: Generate Android Project & Build APK
         run: |
-          # Create Bubblewrap configuration to skip interactive JDK/SDK setup prompts
+          # 1. Pre-configure JDK and Android SDK paths
           mkdir -p ~/.bubblewrap
           echo "{\"jdkPath\":\"$JAVA_HOME\",\"androidSdkPath\":\"$ANDROID_HOME\"}" > ~/.bubblewrap/config.json
 
-          # Initialize Bubblewrap using manifest non-interactively
+          # 2. Pre-create the directory so Bubblewrap doesn't ask to create it
+          mkdir -p android-project
+
+          # 3. Initialize Bubblewrap non-interactively
           npx @bubblewrap/cli init --manifest=dist/manifest.json --directory=android-project --skipKeytool
-          
-          # Build APK without asking for signing keys
+
+          # 4. Build the APK without asking for key signatures
           cd android-project
           npx @bubblewrap/cli build --skipSigning
-
-      - name: Upload Android APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: pwa-android-apk
-          path: "**/build/outputs/apk/**/*.apk"
-      - name: Install Bubblewrap CLI
-        run: npm install -g @bubblewrap/cli
-
-      - name: Generate Android Project & Build APK
-        run: |
-          # Automatically accept Android SDK licenses
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-
-          # Initialize Bubblewrap using manifest with non-interactive flags
-          npx @bubblewrap/cli init --manifest=dist/manifest.json --directory=android-project --skipKeytool
-          
-          # Build APK in non-interactive mode
-          cd android-project
-          npx @bubblewrap/cli build --skipSigning
-
-      - name: Upload Android APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: pwa-android-apk
-          path: "**/build/outputs/apk/**/*.apk"
-      - name: Generate Android Project & Build APK
-        run: |
-          # Initialize Bubblewrap project from web manifest
-          npx @bubblewrap/cli init --manifest=dist/manifest.json --directory=android-project --skipKeytool
-          
-          # Navigate into generated android folder and build APK
-          cd android-project
-          npx @bubblewrap/cli build
-
-      - name: Upload Android APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: pwa-android-apk
-          path: android-project/*.apk
-
-      - name: Verify Web Build Manifest & SW
-        run: |
-          echo "Checking dist build contents:"
-          ls -la dist/
-          test -f dist/manifest.json && echo "manifest.json present"
-          test -f dist/sw.js && echo "sw.js present"
-
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: pwa-web-dist
-          path: dist/
