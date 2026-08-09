@@ -1,0 +1,49 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    name: Build PWA Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Build Web Application
+        run: npm run build
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Bubblewrap CLI & PWABuilder Tools
+        run: npm install -g @bubblewrap/cli
+
+      - name: Verify Web Build Manifest & SW
+        run: |
+          echo "Checking dist build contents:"
+          ls -la dist/
+          test -f dist/manifest.json && echo "manifest.json present"
+          test -f dist/sw.js && echo "sw.js present"
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-web-dist
+          path: dist/
