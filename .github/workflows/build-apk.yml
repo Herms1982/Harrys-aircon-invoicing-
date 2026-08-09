@@ -31,9 +31,29 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Install Bubblewrap CLI
         run: npm install -g @bubblewrap/cli
 
+      - name: Generate Android Project & Build APK
+        run: |
+          # Automatically accept Android SDK licenses
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+          # Initialize Bubblewrap using manifest with non-interactive flags
+          npx @bubblewrap/cli init --manifest=dist/manifest.json --directory=android-project --skipKeytool
+          
+          # Build APK in non-interactive mode
+          cd android-project
+          npx @bubblewrap/cli build --skipSigning
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-android-apk
+          path: "**/build/outputs/apk/**/*.apk"
       - name: Generate Android Project & Build APK
         run: |
           # Initialize Bubblewrap project from web manifest
