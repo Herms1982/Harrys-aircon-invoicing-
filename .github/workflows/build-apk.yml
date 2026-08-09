@@ -39,8 +39,8 @@ jobs:
           npx serve -s dist -l 8080 &
           sleep 3
 
-          # 2. Build Android package using PWABuilder via npx
-          npx @pwabuilder/cli http://localhost:8080/manifest.json -p android -o android-build
+          # 2. Build Android project using corrected PWABuilder flags
+          npx @pwabuilder/cli --url http://localhost:8080/manifest.json --platform android --output android-build
 
           # 3. Compile the debug APK using Gradle
           cd android-build
