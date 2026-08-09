@@ -13,3 +13,60 @@
           # 4. Build the APK without asking for key signatures
           cd android-project
           npx @bubblewrap/cli build --skipSigning
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    name: Build PWA Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies & Build Web App
+        run: |
+          npm ci || npm install
+          npm run build
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Bubblewrap CLI
+        run: npm install -g @bubblewrap/cli
+
+      - name: Generate Android Project & Build APK
+        run: |
+          # Create Bubblewrap configuration to skip interactive JDK/SDK setup prompts
+          mkdir -p ~/.bubblewrap
+          echo "{\"jdkPath\":\"$JAVA_HOME\",\"androidSdkPath\":\"$ANDROID_HOME\"}" > ~/.bubblewrap/config.json
+
+          # Initialize Bubblewrap using manifest non-interactively
+          npx @bubblewrap/cli init --manifest=dist/manifest.json --directory=android-project --skipKeytool
+          
+          # Build APK without asking for signing keys
+          cd android-project
+          npx @bubblewrap/cli build --skipSigning
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-android-apk
+          path: "**/build/outputs/apk/**/*.apk"
+          
