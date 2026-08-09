@@ -1,18 +1,3 @@
-      - name: Generate Android Project & Build APK
-        run: |
-          # 1. Pre-configure JDK and Android SDK paths
-          mkdir -p ~/.bubblewrap
-          echo "{\"jdkPath\":\"$JAVA_HOME\",\"androidSdkPath\":\"$ANDROID_HOME\"}" > ~/.bubblewrap/config.json
-
-          # 2. Pre-create the directory so Bubblewrap doesn't ask to create it
-          mkdir -p android-project
-
-          # 3. Initialize Bubblewrap non-interactively
-          npx @bubblewrap/cli init --manifest=dist/manifest.json --directory=android-project --skipKeytool
-
-          # 4. Build the APK without asking for key signatures
-          cd android-project
-          npx @bubblewrap/cli build --skipSigning
 name: Build Android APK
 
 on:
@@ -44,6 +29,21 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+      - name: Generate Android Project & Build APK
+        run: |
+          # 1. Pre-configure JDK and Android SDK paths
+          mkdir -p ~/.bubblewrap
+          echo "{\"jdkPath\":\"$JAVA_HOME\",\"androidSdkPath\":\"$ANDROID_HOME\"}" > ~/.bubblewrap/config.json
+
+          # 2. Pre-create the directory so Bubblewrap doesn't ask to create it
+          mkdir -p android-project
+
+          # 3. Initialize Bubblewrap non-interactively
+          npx @bubblewrap/cli init --manifest=dist/manifest.json --directory=android-project --skipKeytool
+
+          # 4. Build the APK without asking for key signatures
+          cd android-project
+          npx @bubblewrap/cli build --skipSigning
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
