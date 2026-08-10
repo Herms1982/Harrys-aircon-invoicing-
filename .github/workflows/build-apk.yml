@@ -43,15 +43,6 @@ jobs:
           npx cap copy android
           npx cap sync android
 
-      - name: Configure Android Permissions in AndroidManifest.xml
-        run: |
-          MANIFEST_FILE="android/app/src/main/AndroidManifest.xml"
-          if [ -f "$MANIFEST_FILE" ]; then
-            # Insert permissions right before </manifest>
-            PERMISSIONS='    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />\n    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />\n    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />\n    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />\n'
-            sed -i "/<\/manifest>/i $PERMISSIONS" "$MANIFEST_FILE"
-          fi
-
       - name: Generate Trusted Release Signing Keystore Certificate
         run: |
           KEYSTORE_PATH="android/app/harrys-release.keystore"
@@ -65,16 +56,57 @@ jobs:
             -keypass "HarrysAircon2026Pass" \
             -dname "CN=Harrys Aircon, OU=App, O=Harrys Aircon Electrical Solar, L=Pretoria, ST=Gauteng, C=ZA"
 
-      - name: Inject Release Signing Config into build.gradle
+      - name: Configure Android Permissions and Release Signing in Gradle
         run: |
-          GRADLE_FILE="android/app/build.gradle"
-          if [ -f "$GRADLE_FILE" ]; then
-            # Inject signingConfigs block before buildTypes
-            SIGNING_CONFIG='    signingConfigs {\n        release {\n            storeFile file("harrys-release.keystore")\n            storePassword "HarrysAircon2026Pass"\n            keyAlias "harrys-key"\n            keyPassword "HarrysAircon2026Pass"\n        }\n    }\n'
-            sed -i "/buildTypes {/i $SIGNING_CONFIG" "$GRADLE_FILE"
-            # Attach release signingConfig to release buildType
-            sed -i 's/buildTypes {/buildTypes {\n        release {\n            signingConfig signingConfigs.release/g' "$GRADLE_FILE"
-          fi
+          node -e '
+          const fs = require("fs");
+          
+          // 1. Configure AndroidManifest.xml permissions
+          const manifestPath = "android/app/src/main/AndroidManifest.xml";
+          if (fs.existsSync(manifestPath)) {
+            let manifest = fs.readFileSync(manifestPath, "utf8");
+            const permissions = `
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />`;
+            if (!manifest.includes("android.permission.INTERNET")) {
+              manifest = manifest.replace("</manifest>", permissions + "\n</manifest>");
+              fs.writeFileSync(manifestPath, manifest, "utf8");
+              console.log("Updated AndroidManifest.xml permissions");
+            }
+          }
+
+          // 2. Inject Signing Config into build.gradle cleanly without syntax errors
+          const gradlePath = "android/app/build.gradle";
+          if (fs.existsSync(gradlePath)) {
+            let gradle = fs.readFileSync(gradlePath, "utf8");
+            
+            const signingBlock = `
+    signingConfigs {
+        release {
+            storeFile file("harrys-release.keystore")
+            storePassword "HarrysAircon2026Pass"
+            keyAlias "harrys-key"
+            keyPassword "HarrysAircon2026Pass"
+        }
+    }`;
+
+            if (!gradle.includes("signingConfigs {")) {
+              gradle = gradle.replace(/android\s*\{/, "android {\n" + signingBlock);
+            }
+
+            if (!gradle.includes("signingConfig signingConfigs.release")) {
+              gradle = gradle.replace(/release\s*\{/, "release {\n            signingConfig signingConfigs.release");
+            }
+
+            fs.writeFileSync(gradlePath, gradle, "utf8");
+            console.log("Updated android/app/build.gradle cleanly with signingConfigs block");
+          }
+          '
 
       - name: Build Android Release & Debug APKs with Gradle
         run: |
