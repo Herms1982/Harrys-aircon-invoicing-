@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Printer, CheckCircle2, TrendingUp, ChevronDown, ChevronUp, Copy, Check, MapPin, Phone, Mail, Share2 } from 'lucide-react';
+import { X, Printer, CheckCircle2, TrendingUp, ChevronDown, ChevronUp, Copy, Check, MapPin, Phone, Mail, Share2, Sparkles } from 'lucide-react';
 import { CalloutJob, BusinessSettings, JobStatus } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
 import confetti from 'canvas-confetti';
@@ -11,6 +11,7 @@ interface InvoiceViewModalProps {
   onClose: () => void;
   onStatusChange: (job: CalloutJob, newStatus: JobStatus) => void;
   onEditJob: (job: CalloutJob) => void;
+  onOpenAICopilot?: () => void;
 }
 
 export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({
@@ -20,6 +21,7 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({
   onClose,
   onStatusChange,
   onEditJob,
+  onOpenAICopilot,
 }) => {
   if (!isOpen || !job) return null;
 
@@ -303,15 +305,27 @@ Thank you for your business!`;
               )}
             </button>
 
-            {job.status !== 'Paid' && (
-              <button
-                onClick={handleMarkPaid}
-                className="text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg shadow-emerald-500/20 cursor-pointer"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Mark Paid</span>
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {onOpenAICopilot && (
+                <button
+                  onClick={onOpenAICopilot}
+                  className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-md border border-indigo-400/30 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                  <span>AI Message Copilot</span>
+                </button>
+              )}
+
+              {job.status !== 'Paid' && (
+                <button
+                  onClick={handleMarkPaid}
+                  className="text-xs bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-lg shadow-emerald-500/20 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Mark Paid</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {showProfitAudit && (

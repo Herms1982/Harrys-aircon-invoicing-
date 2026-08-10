@@ -9,6 +9,7 @@ interface HeaderProps {
   setIsMobileDeviceFrame: (val: boolean) => void;
   lowStockCount: number;
   onOpenLowStock: () => void;
+  onOpenAICopilot?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -18,6 +19,7 @@ export const Header: React.FC<HeaderProps> = ({
   setIsMobileDeviceFrame,
   lowStockCount,
   onOpenLowStock,
+  onOpenAICopilot,
 }) => {
   const tabTitles: Record<string, string> = {
     jobs: 'Callout Jobs & Invoices',
@@ -63,6 +65,19 @@ export const Header: React.FC<HeaderProps> = ({
               <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden sm:inline">{lowStockCount} Low Stock</span>
               <span className="sm:hidden">{lowStockCount}</span>
+            </button>
+          )}
+
+          {/* Gemini AI Copilot button */}
+          {onOpenAICopilot && (
+            <button
+              onClick={onOpenAICopilot}
+              className="flex items-center gap-1.5 text-xs bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold px-3 py-1.5 rounded-xl border border-indigo-400/40 shadow-lg shadow-indigo-900/30 transition-all cursor-pointer"
+              title="Open Gemini AI Assistant"
+            >
+              <Sparkles className="w-3.5 h-3.5 animate-pulse text-amber-300" />
+              <span className="hidden sm:inline">AI Copilot</span>
+              <span className="sm:hidden">AI</span>
             </button>
           )}
 

@@ -1,0 +1,8 @@
+{
+  "appId": "za.co.harrysaircon.app",
+  "appName": "Harry's Aircon invoice app",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}

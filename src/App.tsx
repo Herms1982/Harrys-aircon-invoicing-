@@ -10,6 +10,8 @@ import { StockLogModal } from './components/inventory/StockLogModal';
 import { ClientList } from './components/clients/ClientList';
 import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
 import { SettingsModal } from './components/settings/SettingsModal';
+import { AICopilotModal } from './components/ai/AICopilotModal';
+import { AIParsedNoteResult } from './lib/ai';
 
 import {
   getStoredStock,
@@ -54,6 +56,67 @@ export default function App() {
   const [editingStockItem, setEditingStockItem] = useState<StockItem | null>(null);
 
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
+
+  // Apply parsed AI note directly to New Callout Job
+  const handleApplyParsedAIJob = (parsed: AIParsedNoteResult) => {
+    // Map parsed stock items to UsedStockItem
+    const matchedStockItems = (parsed.items || []).map((it) => {
+      const foundInCatalog = stock.find((s) => s.id === it.stockItemId || s.name.toLowerCase().includes(it.name.toLowerCase()));
+      return {
+        stockItemId: foundInCatalog?.id || `stk-ai-${Date.now()}-${Math.random()}`,
+        sku: foundInCatalog?.sku || `SKU-AI`,
+        name: it.name,
+        unit: foundInCatalog?.unit || 'pcs',
+        quantity: it.quantity,
+        unitCost: foundInCatalog?.costPrice || Math.round(it.unitPrice * 0.6),
+        unitSellPrice: it.unitPrice,
+      };
+    });
+
+    const aiJobDraft: CalloutJob = {
+      id: `job-${Date.now()}`,
+      invoiceNumber: `INV-2026-${settings.nextInvoiceNumber}`,
+      clientId: `cli-ai-${Date.now()}`,
+      clientName: parsed.clientName || 'New Client',
+      clientAddress: parsed.clientAddress || '',
+      clientPhone: parsed.clientPhone || '',
+      date: new Date().toISOString().split('T')[0],
+      status: 'Invoiced',
+      jobTitle: parsed.jobTitle || 'AI Auto-Filled Callout',
+      workDone: parsed.description || '',
+      kmTravelled: 15,
+      fuelCostPerKm: settings.defaultFuelCostPerKm,
+      clientFuelRatePerKm: settings.defaultClientFuelRatePerKm,
+      hoursOnSite: parsed.laborHours || 1.5,
+      hourlyRateClient: settings.defaultHourlyRateClient,
+      hourlyCostInternal: settings.defaultHourlyCostInternal,
+      stockItems: matchedStockItems,
+      miscExpenses: [],
+      taxRate: settings.defaultTaxRate,
+      discountAmount: 0,
+      stockDeducted: false,
+      createdAt: new Date().toISOString(),
+      subtotal: 0,
+      totalInvoicePrice: 0,
+      totalCalloutCost: 0,
+      netProfit: 0,
+      profitMarginPercent: 0,
+      travelCharge: 0,
+      travelCost: 0,
+      laborCharge: 0,
+      laborCost: 0,
+      stockCharge: 0,
+      stockCost: 0,
+      miscCharge: 0,
+      miscCost: 0,
+      taxTotal: 0,
+    };
+
+    setEditingJob(aiJobDraft);
+    setIsJobModalOpen(true);
+    showToast('✨ AI field notes applied to Callout Job form!');
+  };
 
   // Sync state changes to localStorage
   useEffect(() => {
@@ -275,6 +338,7 @@ export default function App() {
             onOpenLowStock={() => {
               setActiveTab('inventory');
             }}
+            onOpenAICopilot={() => setIsAICopilotOpen(true)}
           />
 
           {/* Floating Toast Alert Banner */}
@@ -407,6 +471,7 @@ export default function App() {
           setEditingJob(job);
           setIsJobModalOpen(true);
         }}
+        onOpenAICopilot={() => setIsAICopilotOpen(true)}
       />
 
       <StockFormModal
@@ -424,6 +489,16 @@ export default function App() {
         logs={logs}
         isOpen={isLogsModalOpen}
         onClose={() => setIsLogsModalOpen(false)}
+      />
+
+      <AICopilotModal
+        isOpen={isAICopilotOpen}
+        onClose={() => setIsAICopilotOpen(false)}
+        stock={stock}
+        jobs={callouts}
+        clients={clients}
+        settings={settings}
+        onApplyParsedJob={handleApplyParsedAIJob}
       />
     </div>
   );

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Fuel, Clock, Package, DollarSign, Calculator, UserPlus, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { X, Plus, Trash2, Fuel, Clock, Package, DollarSign, Calculator, UserPlus, AlertTriangle, ShieldCheck, Sparkles, Loader2 } from 'lucide-react';
 import { CalloutJob, Client, StockItem, UsedStockItem, MiscExpense, BusinessSettings, JobStatus } from '../../types';
 import { calculateJobTotals, formatCurrency } from '../../lib/calculations';
+import { parseFieldNotesWithAI } from '../../lib/ai';
 
 interface JobFormModalProps {
   initialJob?: CalloutJob | null;
@@ -92,6 +93,51 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
   const [discountAmount, setDiscountAmount] = useState<number>(
     initialJob?.discountAmount ?? 0
   );
+
+  // Inline AI parsing state
+  const [showAIPrompt, setShowAIPrompt] = useState(false);
+  const [aiRawInput, setAiRawInput] = useState('');
+  const [isAiParsing, setIsAiParsing] = useState(false);
+
+  const handleInlineAIParse = async () => {
+    if (!aiRawInput.trim()) return;
+    setIsAiParsing(true);
+    try {
+      const res = await parseFieldNotesWithAI(aiRawInput, stockItems);
+      if (res.jobTitle) setJobTitle(res.jobTitle);
+      if (res.description) setWorkDone(res.description);
+      if (res.laborHours) setHoursOnSite(res.laborHours);
+      if (res.clientName) {
+        setIsCreatingClient(true);
+        setNewClientName(res.clientName);
+        if (res.clientPhone) setNewClientPhone(res.clientPhone);
+        if (res.clientAddress) setNewClientAddress(res.clientAddress);
+      }
+
+      if (res.items && res.items.length > 0) {
+        const newUsedItems: UsedStockItem[] = res.items.map((it) => {
+          const found = stockItems.find((s) => s.id === it.stockItemId || s.name.toLowerCase().includes(it.name.toLowerCase()));
+          return {
+            stockItemId: found?.id || `stk-ai-${Date.now()}-${Math.random()}`,
+            sku: found?.sku || 'SKU-AI',
+            name: it.name,
+            unit: found?.unit || 'pcs',
+            quantity: it.quantity,
+            unitCost: found?.costPrice || Math.round(it.unitPrice * 0.6),
+            unitSellPrice: it.unitPrice,
+          };
+        });
+        setUsedStockItems((prev) => [...prev, ...newUsedItems]);
+      }
+
+      setShowAIPrompt(false);
+      setAiRawInput('');
+    } catch (err: any) {
+      alert(err.message || 'Failed to parse notes with AI');
+    } finally {
+      setIsAiParsing(false);
+    }
+  };
 
   // When client changes from dropdown
   const currentClient = clients.find((c) => c.id === selectedClientId);
@@ -302,9 +348,62 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1">
           {/* Section 1: Basic Info & Client */}
           <div className="bg-slate-950/60 p-5 rounded-3xl border border-slate-800/80 space-y-3">
-            <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
-              <span>1. Client & Invoice Info</span>
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                <span>1. Client & Invoice Info</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAIPrompt(!showAIPrompt)}
+                className="text-xs bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 font-bold px-3 py-1 rounded-xl border border-indigo-500/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                <span>{showAIPrompt ? 'Close AI Auto-Fill' : '✨ AI Auto-Fill Form'}</span>
+              </button>
+            </div>
+
+            {/* Inline AI Field Note Auto-Filler Panel */}
+            {showAIPrompt && (
+              <div className="bg-slate-900 border border-indigo-500/40 p-4 rounded-2xl space-y-2 shadow-xl">
+                <label className="block text-xs font-bold text-indigo-300">
+                  Paste Technician Field Notes or Voice Transcript:
+                </label>
+                <textarea
+                  value={aiRawInput}
+                  onChange={(e) => setAiRawInput(e.target.value)}
+                  placeholder="e.g. Serviced aircon for Sarah Jenkins at 12 Ocean View. Replaced 2x 25A Circuit Breakers and 1L R410a Gas. Worked 2 hours on site."
+                  rows={2}
+                  className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAIPrompt(false)}
+                    className="px-3 py-1.5 bg-slate-800 text-slate-300 font-bold text-xs rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleInlineAIParse}
+                    disabled={isAiParsing || !aiRawInput.trim()}
+                    className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow border border-indigo-400/30 disabled:opacity-50"
+                  >
+                    {isAiParsing ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Extracting with Gemini...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Auto-Fill Form Fields</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
