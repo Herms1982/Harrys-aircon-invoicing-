@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Harry\'s Aircon invoice app</string>
+    <string name="title_activity_main">Harry\'s Aircon invoice app</string>
+    <string name="package_name">za.co.harrysaircon.app</string>
+    <string name="custom_url_scheme">za.co.harrysaircon.app</string>
+</resources>

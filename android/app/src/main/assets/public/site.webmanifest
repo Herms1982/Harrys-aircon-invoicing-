@@ -1,0 +1,79 @@
+{
+  "id": "/",
+  "name": "Harry's Aircon invoice app",
+  "short_name": "Harry's app",
+  "description": "Invoice and bookings app for Harry's Aircon Electrical and Solar services",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "window-controls-overlay"],
+  "orientation": "any",
+  "background_color": "#aabcd7",
+  "theme_color": "#e8ef22",
+  "categories": ["business", "finance", "productivity", "utilities"],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/pwa-maskable-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/pwa-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512 192x192 any",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Desktop Callout Dashboard & Invoicing"
+    },
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile Callout Logging & Inventory Management"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Callout Job",
+      "short_name": "New Callout",
+      "description": "Log a new service callout and generate invoice",
+      "url": "/#new-job"
+    },
+    {
+      "name": "Inventory Stock",
+      "short_name": "Stock",
+      "description": "Manage parts catalog and low stock items",
+      "url": "/#stock"
+    }
+  ]
+}

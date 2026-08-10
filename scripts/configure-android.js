@@ -32,7 +32,9 @@ const gradlePath = path.join(process.cwd(), 'android', 'app', 'build.gradle');
 if (fs.existsSync(gradlePath)) {
   let gradle = fs.readFileSync(gradlePath, 'utf8');
 
-  const signingBlock = `
+  // Add signingConfigs inside android { ... } if missing
+  if (!gradle.includes('signingConfigs {')) {
+    const signingBlock = `
     signingConfigs {
         release {
             storeFile file("harrys-release.keystore")
@@ -40,16 +42,14 @@ if (fs.existsSync(gradlePath)) {
             keyAlias "harrys-key"
             keyPassword "HarrysAircon2026Pass"
         }
-    }`;
+    }\n`;
 
-  // Add signingConfigs inside android { ... } if missing
-  if (!gradle.includes('signingConfigs {')) {
     gradle = gradle.replace(/android\s*\{/, `android {${signingBlock}`);
   }
 
   // Attach release signingConfig inside buildTypes { release { ... } }
   if (!gradle.includes('signingConfig signingConfigs.release')) {
-    gradle = gradle.replace(/buildTypes\s*\{\s*release\s*\{/, `buildTypes {\n        release {\n            signingConfig signingConfigs.release`);
+    gradle = gradle.replace(/release\s*\{/, `release {\n            signingConfig signingConfigs.release`);
   }
 
   fs.writeFileSync(gradlePath, gradle, 'utf8');
@@ -59,3 +59,4 @@ if (fs.existsSync(gradlePath)) {
 }
 
 console.log('--- Android configuration complete ---');
+
