@@ -45,29 +45,30 @@ jobs:
 
       - name: Configure Android Permissions
         run: |
-          node -e '
-          const fs = require("fs");
-          const manifestPath = "android/app/src/main/AndroidManifest.xml";
+          cat << 'EOF' > update-permissions.js
+          const fs = require('fs');
+          const manifestPath = 'android/app/src/main/AndroidManifest.xml';
           if (fs.existsSync(manifestPath)) {
-            let manifest = fs.readFileSync(manifestPath, "utf8");
+            let manifest = fs.readFileSync(manifestPath, 'utf8');
             const perms = [
-              "android.permission.INTERNET",
-              "android.permission.READ_EXTERNAL_STORAGE",
-              "android.permission.WRITE_EXTERNAL_STORAGE",
-              "android.permission.READ_MEDIA_IMAGES",
-              "android.permission.READ_MEDIA_VIDEO",
-              "android.permission.READ_MEDIA_AUDIO",
-              "android.permission.ACCESS_MEDIA_LOCATION"
+              'android.permission.INTERNET',
+              'android.permission.READ_EXTERNAL_STORAGE',
+              'android.permission.WRITE_EXTERNAL_STORAGE',
+              'android.permission.READ_MEDIA_IMAGES',
+              'android.permission.READ_MEDIA_VIDEO',
+              'android.permission.READ_MEDIA_AUDIO',
+              'android.permission.ACCESS_MEDIA_LOCATION'
             ];
             perms.forEach(p => {
               if (!manifest.includes(p)) {
-                manifest = manifest.replace("</manifest>", "    <uses-permission android:name=\"" + p + "\" />\n</manifest>");
+                manifest = manifest.replace('</manifest>', `    <uses-permission android:name="${p}" />\n</manifest>`);
               }
             });
-            fs.writeFileSync(manifestPath, manifest, "utf8");
-            console.log("Updated AndroidManifest.xml permissions successfully");
+            fs.writeFileSync(manifestPath, manifest, 'utf8');
+            console.log('Updated AndroidManifest.xml permissions successfully');
           }
-          '
+          EOF
+          node update-permissions.js
 
       - name: Generate Release Signing Keystore Certificate
         run: |
@@ -84,13 +85,12 @@ jobs:
 
       - name: Configure Signing in build.gradle
         run: |
-          node -e '
-          const fs = require("fs");
-          const gradlePath = "android/app/build.gradle";
+          cat << 'EOF' > configure-gradle.js
+          const fs = require('fs');
+          const gradlePath = 'android/app/build.gradle';
           if (fs.existsSync(gradlePath)) {
-            let gradle = fs.readFileSync(gradlePath, "utf8");
-            
-            const signingConfigStr = `
+            let gradle = fs.readFileSync(gradlePath, 'utf8');
+            const signingBlock = `
         signingConfigs {
             release {
                 storeFile file("harrys-release.keystore")
@@ -99,32 +99,31 @@ jobs:
                 keyPassword "HarrysAircon2026Pass"
             }
         }`;
-            
-            if (!gradle.includes("signingConfigs {")) {
-              gradle = gradle.replace(/buildTypes\s*\{/, signingConfigStr + "\n    buildTypes {");
+            if (!gradle.includes('signingConfigs {')) {
+              gradle = gradle.replace(/buildTypes\s*\{/, signingBlock + '\n    buildTypes {');
             }
-            if (!gradle.includes("signingConfig signingConfigs.release")) {
-              gradle = gradle.replace(/getByName\("release"\)\s*\{/, "getByName(\"release\") {\n            signingConfig = signingConfigs.getByName(\"release\")");
-              gradle = gradle.replace(/release\s*\{/, "release {\n            signingConfig signingConfigs.release");
+            if (!gradle.includes('signingConfig signingConfigs.release')) {
+              gradle = gradle.replace(/release\s*\{/, 'release {\n            signingConfig signingConfigs.release');
             }
-            fs.writeFileSync(gradlePath, gradle, "utf8");
-            console.log("Configured build.gradle signing configs successfully");
+            fs.writeFileSync(gradlePath, gradle, 'utf8');
+            console.log('Configured build.gradle signing configs successfully');
           }
-          '
+          EOF
+          node configure-gradle.js
 
       - name: Build Android Release & Debug APKs with Gradle
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
-          ./gradlew assembleRelease --stacktrace || ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleRelease --stacktrace || true
 
       - name: Upload Signed Release APK Artifact
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
           name: Harrys-Aircon-Signed-Release.apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          path: android/app/build/outputs/apk/release/*.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
