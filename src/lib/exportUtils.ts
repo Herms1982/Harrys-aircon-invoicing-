@@ -7,17 +7,28 @@ import { Share } from '@capacitor/share';
 import { CalloutJob, BusinessSettings, StockItem } from '../types';
 import { formatCurrency, calculateJobTotals } from './calculations';
 
+export interface PDFSaveResult {
+  success: boolean;
+  blobUrl: string;
+  filename: string;
+  title: string;
+  shared?: boolean;
+}
+
 /**
  * Universal PDF export helper that works reliably across:
  * - Desktop Chrome / Firefox / Safari
  * - Android WebView / Capacitor native app (with runtime permissions)
  * - Mobile web browsers & sandboxed iFrames
  */
-async function savePDFDocument(doc: jsPDF, filename: string, title: string) {
-  // Strategy A: Capacitor Android Native App
+async function savePDFDocument(doc: jsPDF, filename: string, title: string): Promise<PDFSaveResult> {
+  const pdfBlob = doc.output('blob');
+  const blobUrl = URL.createObjectURL(pdfBlob);
+  let shared = false;
+
+  // 1. Capacitor Android Native App
   if (Capacitor.isNativePlatform()) {
     try {
-      // Prompt Android runtime permissions
       await Filesystem.requestPermissions();
 
       const pdfDataUri = doc.output('datauristring');
@@ -30,83 +41,66 @@ async function savePDFDocument(doc: jsPDF, filename: string, title: string) {
         recursive: true,
       });
 
-      // Share or save via Android system dialog
       await Share.share({
         title: title || filename,
         text: `PDF Document: ${filename}`,
         url: result.uri,
         dialogTitle: `Save or Share ${filename}`,
       });
-      return;
+      return { success: true, blobUrl, filename, title, shared: true };
     } catch (nativeErr) {
       console.warn('Native Capacitor save error:', nativeErr);
     }
   }
 
-  // Strategy B: Standard jsPDF doc.save
-  let jsPdfSaved = false;
-  try {
-    doc.save(filename);
-    jsPdfSaved = true;
-  } catch (err) {
-    console.warn('doc.save error:', err);
-  }
-
-  // Strategy C: Blob URL & explicit anchor element click
-  try {
-    const pdfBlob = doc.output('blob');
-    const blobUrl = URL.createObjectURL(pdfBlob);
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.href = blobUrl;
-    downloadAnchor.download = filename;
-    downloadAnchor.style.display = 'none';
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    setTimeout(() => {
-      document.body.removeChild(downloadAnchor);
-      URL.revokeObjectURL(blobUrl);
-    }, 1000);
-  } catch (blobErr) {
-    console.warn('Blob URL save error:', blobErr);
-  }
-
-  // Strategy D: Data URI fallback download
-  if (!jsPdfSaved) {
+  // 2. Web Share API for Mobile Devices (Android Chrome & iOS Safari)
+  if (typeof navigator !== 'undefined' && navigator.share && navigator.canShare) {
     try {
-      const dataUri = doc.output('datauristring');
-      const link = document.createElement('a');
-      link.href = dataUri;
-      link.download = filename;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (e) {
-      console.warn('Data URI download error:', e);
-    }
-  }
-
-  // Strategy E: Mobile Web Share API fallback
-  if (navigator.share && navigator.canShare) {
-    try {
-      const pdfBlob = doc.output('blob');
       const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
       if (navigator.canShare({ files: [pdfFile] })) {
         await navigator.share({
           files: [pdfFile],
           title: title || filename,
         });
+        shared = true;
       }
     } catch (shareErr) {
-      // User cancelled or share blocked
+      console.warn('Web Share API canceled or unsupported:', shareErr);
     }
   }
+
+  // 3. Anchor download click
+  try {
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.href = blobUrl;
+    downloadAnchor.download = filename;
+    downloadAnchor.target = '_blank';
+    downloadAnchor.style.display = 'none';
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    setTimeout(() => {
+      if (document.body.contains(downloadAnchor)) {
+        document.body.removeChild(downloadAnchor);
+      }
+    }, 2000);
+  } catch (anchorErr) {
+    console.warn('Anchor download error:', anchorErr);
+  }
+
+  // 4. Fallback jsPDF doc.save
+  try {
+    doc.save(filename);
+  } catch (err) {
+    console.warn('doc.save error:', err);
+  }
+
+  return { success: true, blobUrl, filename, title, shared };
 }
 
 /**
- * Generate and download a PDF for an Invoice
+ * Build jsPDF instance and metadata for an Invoice
  */
-export async function downloadInvoicePDF(job: CalloutJob, settings: BusinessSettings): Promise<void> {
+export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings): { doc: jsPDF; filename: string; title: string } {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -335,7 +329,95 @@ export async function downloadInvoicePDF(job: CalloutJob, settings: BusinessSett
   doc.text("Thank you for choosing Harry's Aircon Electrical & Solar services!", 105, footerY + 18, { align: 'center' });
 
   const filename = `Invoice_${job.invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, '')}.pdf`;
-  await savePDFDocument(doc, filename, `Invoice ${job.invoiceNumber}`);
+  const title = `Invoice ${job.invoiceNumber}`;
+  return { doc, filename, title };
+}
+
+/**
+ * Generate and download a PDF for an Invoice
+ */
+export async function downloadInvoicePDF(job: CalloutJob, settings: BusinessSettings): Promise<PDFSaveResult> {
+  const { doc, filename, title } = buildInvoicePDFDoc(job, settings);
+  return await savePDFDocument(doc, filename, title);
+}
+
+export interface ShareResult {
+  shared: boolean;
+  method: 'web_share' | 'capacitor' | 'whatsapp' | 'email' | 'clipboard';
+  message?: string;
+}
+
+/**
+ * Share Invoice PDF directly via Web Share API or Capacitor / WhatsApp / Email
+ */
+export async function shareInvoicePDF(job: CalloutJob, settings: BusinessSettings): Promise<ShareResult> {
+  const { doc, filename } = buildInvoicePDFDoc(job, settings);
+  const pdfBlob = doc.output('blob');
+  const title = `Invoice ${job.invoiceNumber} - ${settings.businessName}`;
+  const shareText = `Hi ${job.clientName || 'Valued Client'},\n\nPlease find attached your Invoice ${job.invoiceNumber} for ${formatCurrency(job.totalInvoicePrice, settings.currencySymbol)} from ${settings.businessName}.\n\nThank you for your business!`;
+
+  // 1. Capacitor Native Share
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await Filesystem.requestPermissions();
+      const pdfDataUri = doc.output('datauristring');
+      const base64Data = pdfDataUri.split(',')[1];
+      const result = await Filesystem.writeFile({
+        path: filename,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+
+      await Share.share({
+        title,
+        text: shareText,
+        url: result.uri,
+        dialogTitle: `Share ${filename} via...`,
+      });
+      return { shared: true, method: 'capacitor' };
+    } catch (nativeErr) {
+      console.warn('Capacitor native share error:', nativeErr);
+    }
+  }
+
+  // 2. Web Share API with PDF File (WhatsApp, Email, Telegram, System Share Sheet)
+  if (typeof navigator !== 'undefined' && navigator.share) {
+    try {
+      const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({
+          files: [pdfFile],
+          title,
+          text: shareText,
+        });
+        return { shared: true, method: 'web_share' };
+      } else if (navigator.canShare && navigator.canShare({ title, text: shareText })) {
+        await navigator.share({
+          title,
+          text: shareText,
+        });
+        return { shared: true, method: 'web_share' };
+      }
+    } catch (shareErr: any) {
+      if (shareErr.name === 'AbortError') {
+        return { shared: false, method: 'web_share', message: 'User canceled share' };
+      }
+      console.warn('Web Share API error:', shareErr);
+    }
+  }
+
+  // 3. Direct Fallback: WhatsApp
+  if (job.clientPhone) {
+    const cleanPhone = job.clientPhone.replace(/[^0-9+]/g, '');
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(shareText)}`;
+    window.open(waUrl, '_blank');
+    return { shared: true, method: 'whatsapp' };
+  }
+
+  // 4. Fallback: Email
+  const mailUrl = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(shareText)}`;
+  window.open(mailUrl, '_blank');
+  return { shared: true, method: 'email' };
 }
 
 /**
@@ -421,7 +503,7 @@ export async function exportStockToExcel(stock: StockItem[], settings: BusinessS
 /**
  * Generate Stock Inventory PDF Report
  */
-export async function downloadStockPDF(stock: StockItem[], settings: BusinessSettings): Promise<void> {
+export async function downloadStockPDF(stock: StockItem[], settings: BusinessSettings): Promise<PDFSaveResult> {
   const doc = new jsPDF({
     orientation: 'landscape',
     unit: 'mm',
@@ -525,7 +607,7 @@ export async function downloadStockPDF(stock: StockItem[], settings: BusinessSet
 
   const dateStr = new Date().toISOString().split('T')[0];
   const filename = `Harrys_Aircon_Stock_Report_${dateStr}.pdf`;
-  await savePDFDocument(doc, filename, "Harry's Aircon Inventory Stock Report");
+  return await savePDFDocument(doc, filename, "Harry's Aircon Inventory Stock Report");
 }
 
 /**

@@ -61,7 +61,7 @@ jobs:
             -validity 10000 \
             -storepass "HarrysAircon2026Pass" \
             -keypass "HarrysAircon2026Pass" \
-            -dname "CN=Harrys Aircon, OU=App, O=Harrys Aircon Electrical Solar, L=Johannesburg, ST=Gauteng, C=ZA"
+            -dname "CN=Harrys Aircon, OU=App, O=Harrys Aircon Electrical Solar, L=Pretoria, ST=Gauteng, C=ZA"
 
       - name: Inject Release Signing Config into build.gradle
         run: |

@@ -31,6 +31,7 @@ import {
 } from './lib/storage';
 
 import { StockItem, Client, CalloutJob, BusinessSettings, StockLog, JobStatus } from './types';
+import { STANDARD_ELECTRICAL_CATALOG } from './data/initialData';
 import { ShieldCheck } from 'lucide-react';
 
 export default function App() {
@@ -278,6 +279,21 @@ export default function App() {
     showToast(`Deleted "${item?.name || 'stock item'}" from inventory.`);
   };
 
+  // Handler: Populate / Reset Standard Domestic Electrical Catalog
+  const handlePopulateElectricalCatalog = () => {
+    if (stock.length > 0) {
+      if (!confirm("This will load the 58 standard single-phase domestic electrician stock items (DIN & Samite MCBs, Sockets, Switches, Isolators, Cables, DBs - with trade cost prices and automatic 35% markup, Qty = 0) into your catalog. Proceed?")) {
+        return;
+      }
+    }
+    const existingSkus = new Set(stock.map((s) => s.sku));
+    const newItems = STANDARD_ELECTRICAL_CATALOG.filter((item) => !existingSkus.has(item.sku));
+    const updatedStock = stock.length === 0 ? STANDARD_ELECTRICAL_CATALOG : [...stock, ...newItems];
+    setStock(updatedStock);
+    saveStoredStock(updatedStock);
+    showToast(`Loaded ${stock.length === 0 ? updatedStock.length : newItems.length} single-phase domestic electrical stock items!`);
+  };
+
   // Handler: Delete Client
   const handleDeleteClient = (clientId: string) => {
     const client = clients.find((c) => c.id === clientId);
@@ -395,6 +411,7 @@ export default function App() {
                 onDeleteStock={handleDeleteStockItem}
                 onAdjustStockQty={handleAdjustStockQty}
                 onOpenLogs={() => setIsLogsModalOpen(true)}
+                onPopulateCatalog={handlePopulateElectricalCatalog}
               />
             )}
 

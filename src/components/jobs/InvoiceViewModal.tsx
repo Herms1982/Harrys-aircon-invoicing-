@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { X, Printer, CheckCircle2, TrendingUp, ChevronDown, ChevronUp, Copy, Check, MapPin, Phone, Mail, Share2, Sparkles, FileDown, RefreshCw } from 'lucide-react';
+import { X, Printer, CheckCircle2, TrendingUp, ChevronDown, ChevronUp, Copy, Check, MapPin, Phone, Mail, Share2, Sparkles, FileDown, RefreshCw, ExternalLink, Download, Eye, Send } from 'lucide-react';
 import { CalloutJob, BusinessSettings, JobStatus } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
-import { downloadInvoicePDF } from '../../lib/exportUtils';
+import { downloadInvoicePDF, shareInvoicePDF, PDFSaveResult } from '../../lib/exportUtils';
 import confetti from 'canvas-confetti';
 
 interface InvoiceViewModalProps {
@@ -29,19 +29,45 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({
   const [showProfitAudit, setShowProfitAudit] = useState(true);
   const [copied, setCopied] = useState(false);
   const [isSavingPdf, setIsSavingPdf] = useState(false);
+  const [isSharingPdf, setIsSharingPdf] = useState(false);
   const [pdfSuccessToast, setPdfSuccessToast] = useState(false);
+  const [lastPdfResult, setLastPdfResult] = useState<PDFSaveResult | null>(null);
 
   const handleSavePDF = async () => {
     setIsSavingPdf(true);
     setPdfSuccessToast(false);
     try {
-      await downloadInvoicePDF(job, settings);
+      const res = await downloadInvoicePDF(job, settings);
+      setLastPdfResult(res);
       setPdfSuccessToast(true);
-      setTimeout(() => setPdfSuccessToast(false), 4000);
+
+      // On mobile browsers where download attribute is ignored, auto open blob URL in new tab as immediate fallback
+      if (res?.blobUrl && !res?.shared) {
+        try {
+          const w = window.open(res.blobUrl, '_blank');
+          if (!w) {
+            console.warn('Popup blocked by browser');
+          }
+        } catch (e) {
+          console.warn('Auto open failed:', e);
+        }
+      }
     } catch (err) {
       console.error('PDF Save Error:', err);
+      alert('Generating PDF failed. You can use the Print button to print or save as PDF directly!');
     } finally {
       setIsSavingPdf(false);
+    }
+  };
+
+  const handleSharePDF = async () => {
+    setIsSharingPdf(true);
+    try {
+      await shareInvoicePDF(job, settings);
+    } catch (err) {
+      console.error('PDF Share Error:', err);
+    } finally {
+      setIsSharingPdf(false);
     }
   };
 
@@ -92,36 +118,50 @@ Thank you for your business!`;
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
-              onClick={handleCopySummary}
-              className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2 rounded-xl border border-slate-700 flex items-center gap-1 transition-colors font-semibold"
-              title="Copy invoice summary to share"
+              onClick={handleSharePDF}
+              disabled={isSharingPdf}
+              className="text-xs bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl flex items-center gap-1.5 shadow-lg shadow-indigo-900/30 transition-all cursor-pointer border border-indigo-400/30"
+              title="Share Invoice PDF directly via WhatsApp, Email, or Web Share API"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied' : 'Share'}</span>
+              {isSharingPdf ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+              ) : (
+                <Share2 className="w-3.5 h-3.5 text-indigo-200 stroke-[2.5]" />
+              )}
+              <span>{isSharingPdf ? 'Sharing...' : 'Share'}</span>
             </button>
 
             <button
               onClick={handleSavePDF}
               disabled={isSavingPdf}
-              className="text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer border border-emerald-400/30"
+              className="text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer border border-emerald-400/30"
               title="Download PDF directly to your device"
             >
               {isSavingPdf ? (
-                <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
               ) : (
-                <FileDown className="w-4 h-4 stroke-[2.5]" />
+                <FileDown className="w-3.5 h-3.5 stroke-[2.5]" />
               )}
-              <span>{isSavingPdf ? 'Generating PDF...' : 'Save PDF'}</span>
+              <span className="hidden xs:inline">{isSavingPdf ? 'Saving...' : 'PDF'}</span>
+            </button>
+
+            <button
+              onClick={handleCopySummary}
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-2 rounded-xl border border-slate-700 flex items-center gap-1 transition-colors font-semibold"
+              title="Copy text summary"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+              <span className="hidden md:inline">{copied ? 'Copied' : 'Copy'}</span>
             </button>
 
             <button
               onClick={handlePrint}
-              className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer border border-indigo-400/30"
+              className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-2.5 py-2 rounded-xl flex items-center gap-1 transition-colors cursor-pointer border border-slate-700"
               title="Print invoice or save as PDF via system dialog"
             >
-              <Printer className="w-4 h-4 stroke-[2.5]" />
+              <Printer className="w-3.5 h-3.5 text-slate-300" />
               <span className="hidden sm:inline">Print</span>
             </button>
 
@@ -134,16 +174,60 @@ Thank you for your business!`;
           </div>
         </div>
 
-        {/* Toast alert banner */}
-        {pdfSuccessToast && (
-          <div className="bg-emerald-600 text-white px-4 py-2.5 text-xs font-bold flex items-center justify-between shadow-md animate-in fade-in slide-in-from-top-2">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
-              <span>PDF generated successfully & sent to downloads / native device storage!</span>
+        {/* PDF Generated Success Action Banner */}
+        {pdfSuccessToast && lastPdfResult && (
+          <div className="bg-emerald-950/90 border-b border-emerald-800/80 px-4 py-3 text-xs text-white space-y-2 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-emerald-400">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400 stroke-[2.5]" />
+                <span>Invoice PDF Generated Successfully!</span>
+              </div>
+              <button onClick={() => setPdfSuccessToast(false)} className="text-slate-400 hover:text-white p-1">
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <button onClick={() => setPdfSuccessToast(false)} className="hover:opacity-80">
-              <X className="w-4 h-4" />
-            </button>
+
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {lastPdfResult.blobUrl && (
+                <a
+                  href={lastPdfResult.blobUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>View / Open PDF</span>
+                </a>
+              )}
+
+              {lastPdfResult.blobUrl && (
+                <a
+                  href={lastPdfResult.blobUrl}
+                  download={lastPdfResult.filename || `Invoice_${job.invoiceNumber}.pdf`}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Direct Download</span>
+                </a>
+              )}
+
+              <button
+                onClick={handleSharePDF}
+                disabled={isSharingPdf}
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border border-indigo-400/30"
+              >
+                <Share2 className="w-3.5 h-3.5 text-indigo-200" />
+                <span>Share PDF</span>
+              </button>
+
+              <button
+                onClick={handlePrint}
+                className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-700"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print</span>
+              </button>
+            </div>
           </div>
         )}
 

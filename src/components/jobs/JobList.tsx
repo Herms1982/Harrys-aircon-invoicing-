@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Calendar, MapPin, Clock, PackageCheck, FileText, CheckCircle2, Clock3, AlertCircle, DollarSign, TrendingUp, ChevronRight, Trash2, FileDown } from 'lucide-react';
+import { Plus, Search, Calendar, MapPin, Clock, PackageCheck, FileText, CheckCircle2, Clock3, AlertCircle, DollarSign, TrendingUp, ChevronRight, Trash2, FileDown, RefreshCw } from 'lucide-react';
 import { CalloutJob, JobStatus, BusinessSettings } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
 import { downloadInvoicePDF } from '../../lib/exportUtils';
@@ -25,6 +25,25 @@ export const JobList: React.FC<JobListProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
+
+  const handleDownloadPdf = async (job: CalloutJob) => {
+    setDownloadingPdfId(job.id);
+    try {
+      const res = await downloadInvoicePDF(job, settings);
+      if (res?.blobUrl && !res?.shared) {
+        try {
+          window.open(res.blobUrl, '_blank');
+        } catch (e) {
+          console.warn('Popup blocked:', e);
+        }
+      }
+    } catch (err) {
+      console.error('PDF Download failed:', err);
+    } finally {
+      setDownloadingPdfId(null);
+    }
+  };
 
   const filteredJobs = jobs.filter((job) => {
     const matchesSearch =
@@ -271,11 +290,16 @@ export const JobList: React.FC<JobListProps> = ({
                   {/* Actions */}
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => downloadInvoicePDF(job, settings)}
-                      className="text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-bold px-2.5 py-1.5 rounded-xl border border-emerald-500/30 flex items-center gap-1 transition-colors cursor-pointer"
+                      onClick={() => handleDownloadPdf(job)}
+                      disabled={downloadingPdfId === job.id}
+                      className="text-xs bg-emerald-600/20 hover:bg-emerald-600/30 disabled:opacity-50 text-emerald-300 font-bold px-2.5 py-1.5 rounded-xl border border-emerald-500/30 flex items-center gap-1 transition-colors cursor-pointer"
                       title="Download Invoice PDF"
                     >
-                      <FileDown className="w-3.5 h-3.5 text-emerald-400" />
+                      {downloadingPdfId === job.id ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                      ) : (
+                        <FileDown className="w-3.5 h-3.5 text-emerald-400" />
+                      )}
                       <span className="hidden sm:inline">PDF</span>
                     </button>
                     <button

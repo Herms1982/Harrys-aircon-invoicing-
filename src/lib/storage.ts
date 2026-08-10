@@ -16,16 +16,22 @@ const isDemoId = (id: string) => /^(stk|cli|job|log)-[1-9]$/.test(id) || id.star
 export function getStoredStock(): StockItem[] {
   try {
     const data = localStorage.getItem(KEYS.STOCK);
-    if (!data) return [];
+    if (!data) {
+      saveStoredStock(INITIAL_STOCK);
+      return INITIAL_STOCK;
+    }
     const parsed: StockItem[] = JSON.parse(data);
-    // Filter out old pre-populated demo items if present
     const cleaned = parsed.filter((item) => !isDemoId(item.id));
+    if (cleaned.length === 0 && INITIAL_STOCK.length > 0) {
+      saveStoredStock(INITIAL_STOCK);
+      return INITIAL_STOCK;
+    }
     if (cleaned.length !== parsed.length) {
       saveStoredStock(cleaned);
     }
     return cleaned;
   } catch {
-    return [];
+    return INITIAL_STOCK;
   }
 }
 
@@ -86,6 +92,10 @@ export function getStoredSettings(): BusinessSettings {
         settings.businessName = INITIAL_SETTINGS.businessName;
         settings.ownerName = INITIAL_SETTINGS.ownerName;
         settings.email = INITIAL_SETTINGS.email;
+        updated = true;
+      }
+      if (settings.address === 'Sandton, Johannesburg' || !settings.address) {
+        settings.address = INITIAL_SETTINGS.address;
         updated = true;
       }
       if (updated) {

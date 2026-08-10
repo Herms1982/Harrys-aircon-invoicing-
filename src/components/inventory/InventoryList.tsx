@@ -12,6 +12,7 @@ interface InventoryListProps {
   onDeleteStock?: (id: string) => void;
   onAdjustStockQty: (itemId: string, changeQty: number, reason: string) => void;
   onOpenLogs: () => void;
+  onPopulateCatalog?: () => void;
 }
 
 export const InventoryList: React.FC<InventoryListProps> = ({
@@ -22,6 +23,7 @@ export const InventoryList: React.FC<InventoryListProps> = ({
   onDeleteStock,
   onAdjustStockQty,
   onOpenLogs,
+  onPopulateCatalog,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -128,6 +130,17 @@ export const InventoryList: React.FC<InventoryListProps> = ({
             <span>Audit Log</span>
           </button>
 
+          {onPopulateCatalog && (
+            <button
+              onClick={onPopulateCatalog}
+              className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-bold px-3.5 py-2 rounded-2xl text-xs flex items-center justify-center gap-1.5 border border-emerald-500/40 transition-colors cursor-pointer shadow-sm"
+              title="Load full 58 single-phase domestic electrical stock items catalog"
+            >
+              <Boxes className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Load Domestic Catalog</span>
+            </button>
+          )}
+
           <button
             onClick={onAddStock}
             className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-2xl text-xs shadow-lg shadow-indigo-900/40 flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-indigo-400/30"
@@ -229,13 +242,24 @@ export const InventoryList: React.FC<InventoryListProps> = ({
               You currently have no inventory parts listed. Add parts to automatically deduct stock on callouts.
             </p>
           </div>
-          <button
-            onClick={onAddStock}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-2xl text-xs shadow-lg inline-flex items-center gap-1.5 transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>Add First Stock Item</span>
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            {onPopulateCatalog && (
+              <button
+                onClick={onPopulateCatalog}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2.5 rounded-2xl text-xs shadow-lg inline-flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Boxes className="w-4 h-4 text-white" />
+                <span>Load Domestic Electrical Catalog (58 Items)</span>
+              </button>
+            )}
+            <button
+              onClick={onAddStock}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-2xl text-xs shadow-lg inline-flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>Add Custom Part Item</span>
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
