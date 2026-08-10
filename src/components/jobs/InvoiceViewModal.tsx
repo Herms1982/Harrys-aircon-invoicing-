@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Printer, CheckCircle2, TrendingUp, ChevronDown, ChevronUp, Copy, Check, MapPin, Phone, Mail, Share2, Sparkles, FileDown } from 'lucide-react';
+import { X, Printer, CheckCircle2, TrendingUp, ChevronDown, ChevronUp, Copy, Check, MapPin, Phone, Mail, Share2, Sparkles, FileDown, RefreshCw } from 'lucide-react';
 import { CalloutJob, BusinessSettings, JobStatus } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
 import { downloadInvoicePDF } from '../../lib/exportUtils';
@@ -28,6 +28,22 @@ export const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({
 
   const [showProfitAudit, setShowProfitAudit] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [isSavingPdf, setIsSavingPdf] = useState(false);
+  const [pdfSuccessToast, setPdfSuccessToast] = useState(false);
+
+  const handleSavePDF = async () => {
+    setIsSavingPdf(true);
+    setPdfSuccessToast(false);
+    try {
+      await downloadInvoicePDF(job, settings);
+      setPdfSuccessToast(true);
+      setTimeout(() => setPdfSuccessToast(false), 4000);
+    } catch (err) {
+      console.error('PDF Save Error:', err);
+    } finally {
+      setIsSavingPdf(false);
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -87,12 +103,17 @@ Thank you for your business!`;
             </button>
 
             <button
-              onClick={() => downloadInvoicePDF(job, settings)}
-              className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer border border-emerald-400/30"
+              onClick={handleSavePDF}
+              disabled={isSavingPdf}
+              className="text-xs bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer border border-emerald-400/30"
               title="Download PDF directly to your device"
             >
-              <FileDown className="w-4 h-4 stroke-[2.5]" />
-              <span>Save PDF</span>
+              {isSavingPdf ? (
+                <RefreshCw className="w-4 h-4 animate-spin text-white" />
+              ) : (
+                <FileDown className="w-4 h-4 stroke-[2.5]" />
+              )}
+              <span>{isSavingPdf ? 'Generating PDF...' : 'Save PDF'}</span>
             </button>
 
             <button
@@ -112,6 +133,19 @@ Thank you for your business!`;
             </button>
           </div>
         </div>
+
+        {/* Toast alert banner */}
+        {pdfSuccessToast && (
+          <div className="bg-emerald-600 text-white px-4 py-2.5 text-xs font-bold flex items-center justify-between shadow-md animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 stroke-[2.5]" />
+              <span>PDF generated successfully & sent to downloads / native device storage!</span>
+            </div>
+            <button onClick={() => setPdfSuccessToast(false)} className="hover:opacity-80">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* PRINTABLE INVOICE SHEET */}
         <div className="print-sheet p-6 sm:p-8 bg-white text-slate-900 font-sans space-y-6 overflow-y-auto flex-1 print:p-0">

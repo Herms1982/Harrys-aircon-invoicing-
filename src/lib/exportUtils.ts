@@ -1,13 +1,112 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import { CalloutJob, BusinessSettings, StockItem } from '../types';
 import { formatCurrency, calculateJobTotals } from './calculations';
 
 /**
+ * Universal PDF export helper that works reliably across:
+ * - Desktop Chrome / Firefox / Safari
+ * - Android WebView / Capacitor native app (with runtime permissions)
+ * - Mobile web browsers & sandboxed iFrames
+ */
+async function savePDFDocument(doc: jsPDF, filename: string, title: string) {
+  // Strategy A: Capacitor Android Native App
+  if (Capacitor.isNativePlatform()) {
+    try {
+      // Prompt Android runtime permissions
+      await Filesystem.requestPermissions();
+
+      const pdfDataUri = doc.output('datauristring');
+      const base64Data = pdfDataUri.split(',')[1];
+
+      const result = await Filesystem.writeFile({
+        path: filename,
+        data: base64Data,
+        directory: Directory.Documents,
+        recursive: true,
+      });
+
+      // Share or save via Android system dialog
+      await Share.share({
+        title: title || filename,
+        text: `PDF Document: ${filename}`,
+        url: result.uri,
+        dialogTitle: `Save or Share ${filename}`,
+      });
+      return;
+    } catch (nativeErr) {
+      console.warn('Native Capacitor save error:', nativeErr);
+    }
+  }
+
+  // Strategy B: Standard jsPDF doc.save
+  let jsPdfSaved = false;
+  try {
+    doc.save(filename);
+    jsPdfSaved = true;
+  } catch (err) {
+    console.warn('doc.save error:', err);
+  }
+
+  // Strategy C: Blob URL & explicit anchor element click
+  try {
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.href = blobUrl;
+    downloadAnchor.download = filename;
+    downloadAnchor.style.display = 'none';
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    setTimeout(() => {
+      document.body.removeChild(downloadAnchor);
+      URL.revokeObjectURL(blobUrl);
+    }, 1000);
+  } catch (blobErr) {
+    console.warn('Blob URL save error:', blobErr);
+  }
+
+  // Strategy D: Data URI fallback download
+  if (!jsPdfSaved) {
+    try {
+      const dataUri = doc.output('datauristring');
+      const link = document.createElement('a');
+      link.href = dataUri;
+      link.download = filename;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      console.warn('Data URI download error:', e);
+    }
+  }
+
+  // Strategy E: Mobile Web Share API fallback
+  if (navigator.share && navigator.canShare) {
+    try {
+      const pdfBlob = doc.output('blob');
+      const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+      if (navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({
+          files: [pdfFile],
+          title: title || filename,
+        });
+      }
+    } catch (shareErr) {
+      // User cancelled or share blocked
+    }
+  }
+}
+
+/**
  * Generate and download a PDF for an Invoice
  */
-export function downloadInvoicePDF(job: CalloutJob, settings: BusinessSettings) {
+export async function downloadInvoicePDF(job: CalloutJob, settings: BusinessSettings): Promise<void> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -235,15 +334,14 @@ export function downloadInvoicePDF(job: CalloutJob, settings: BusinessSettings) 
   doc.setTextColor(148, 163, 184);
   doc.text("Thank you for choosing Harry's Aircon Electrical & Solar services!", 105, footerY + 18, { align: 'center' });
 
-  // Save PDF
   const filename = `Invoice_${job.invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, '')}.pdf`;
-  doc.save(filename);
+  await savePDFDocument(doc, filename, `Invoice ${job.invoiceNumber}`);
 }
 
 /**
  * Export Stock Inventory Catalog to Excel (.xlsx)
  */
-export function exportStockToExcel(stock: StockItem[], settings: BusinessSettings) {
+export async function exportStockToExcel(stock: StockItem[], settings: BusinessSettings): Promise<void> {
   const data = stock.map((item, index) => {
     const costValue = item.quantity * item.costPrice;
     const retailValue = item.quantity * item.sellPrice;
@@ -293,13 +391,37 @@ export function exportStockToExcel(stock: StockItem[], settings: BusinessSetting
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Stock Catalog');
 
   const today = new Date().toISOString().split('T')[0];
-  XLSX.writeFile(workbook, `Harrys_Aircon_Stock_List_${today}.xlsx`);
+  const filename = `Harrys_Aircon_Stock_List_${today}.xlsx`;
+
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await Filesystem.requestPermissions();
+      const excelBase64 = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+      const result = await Filesystem.writeFile({
+        path: filename,
+        data: excelBase64,
+        directory: Directory.Documents,
+        recursive: true,
+      });
+
+      await Share.share({
+        title: "Harry's Aircon Stock List Excel",
+        url: result.uri,
+        dialogTitle: 'Share or Save Excel Stock List',
+      });
+      return;
+    } catch (e) {
+      console.warn('Capacitor native Excel save error:', e);
+    }
+  }
+
+  XLSX.writeFile(workbook, filename);
 }
 
 /**
  * Generate Stock Inventory PDF Report
  */
-export function downloadStockPDF(stock: StockItem[], settings: BusinessSettings) {
+export async function downloadStockPDF(stock: StockItem[], settings: BusinessSettings): Promise<void> {
   const doc = new jsPDF({
     orientation: 'landscape',
     unit: 'mm',
@@ -402,7 +524,8 @@ export function downloadStockPDF(stock: StockItem[], settings: BusinessSettings)
   });
 
   const dateStr = new Date().toISOString().split('T')[0];
-  doc.save(`Harrys_Aircon_Stock_Report_${dateStr}.pdf`);
+  const filename = `Harrys_Aircon_Stock_Report_${dateStr}.pdf`;
+  await savePDFDocument(doc, filename, "Harry's Aircon Inventory Stock Report");
 }
 
 /**

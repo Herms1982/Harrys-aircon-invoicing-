@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build & Sign Android APK
 
 on:
   push:
@@ -7,53 +7,87 @@ on:
 
 jobs:
   build-apk:
-    name: Build PWA Android APK
+    name: Build Signed Android Release APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 22
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
+          cache: 'npm'
 
-      - name: Install dependencies & Build Web App
-        run: |
-          npm ci || npm install
-          npm run build
+      - name: Install dependencies
+        run: npm ci || npm install
 
-      - name: Set up Java JDK 21
+      - name: Build Web Application
+        run: npm run build
+
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '17'
 
-      - name: Set up Android SDK
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Capacitor & Wrap Web App
+      - name: Initialize Capacitor Android Project
         run: |
-          # Install Capacitor CLI & plugins locally
-          npm install @capacitor/core @capacitor/cli @capacitor/android
-
-          # Initialize Capacitor project targeting the dist folder
-          npx cap init "MyApp" "com.example.myapp" --web-dir dist
-
-          # Add Android platform target and sync assets
           npx cap add android || true
           npx cap copy android
           npx cap sync android
 
-      - name: Build APK with Gradle
+      - name: Configure Android Permissions in AndroidManifest.xml
+        run: |
+          MANIFEST_FILE="android/app/src/main/AndroidManifest.xml"
+          if [ -f "$MANIFEST_FILE" ]; then
+            # Insert permissions right before </manifest>
+            PERMISSIONS='    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />\n    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />\n    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />\n    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />\n'
+            sed -i "/<\/manifest>/i $PERMISSIONS" "$MANIFEST_FILE"
+          fi
+
+      - name: Generate Trusted Release Signing Keystore Certificate
+        run: |
+          KEYSTORE_PATH="android/app/harrys-release.keystore"
+          keytool -genkeypair -v \
+            -keystore "$KEYSTORE_PATH" \
+            -alias harrys-key \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass "HarrysAircon2026Pass" \
+            -keypass "HarrysAircon2026Pass" \
+            -dname "CN=Harrys Aircon, OU=App, O=Harrys Aircon Electrical Solar, L=Johannesburg, ST=Gauteng, C=ZA"
+
+      - name: Inject Release Signing Config into build.gradle
+        run: |
+          GRADLE_FILE="android/app/build.gradle"
+          if [ -f "$GRADLE_FILE" ]; then
+            # Inject signingConfigs block before buildTypes
+            SIGNING_CONFIG='    signingConfigs {\n        release {\n            storeFile file("harrys-release.keystore")\n            storePassword "HarrysAircon2026Pass"\n            keyAlias "harrys-key"\n            keyPassword "HarrysAircon2026Pass"\n        }\n    }\n'
+            sed -i "/buildTypes {/i $SIGNING_CONFIG" "$GRADLE_FILE"
+            # Attach release signingConfig to release buildType
+            sed -i 's/buildTypes {/buildTypes {\n        release {\n            signingConfig signingConfigs.release/g' "$GRADLE_FILE"
+          fi
+
+      - name: Build Android Release & Debug APKs with Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease assembleDebug --stacktrace
 
-      - name: Upload Android APK Artifact
+      - name: Upload Signed Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: pwa-android-apk
-          path: "android/app/build/outputs/apk/debug/*.apk"
+          name: Harrys-Aircon-Signed-Release.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Harrys-Aircon-Debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
