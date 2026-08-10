@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 22
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -28,11 +28,11 @@ jobs:
       - name: Build Web Application
         run: npm run build
 
-      - name: Set up JDK 21
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '17'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -43,34 +43,7 @@ jobs:
           npx cap copy android
           npx cap sync android
 
-      - name: Configure Android Permissions
-        run: |
-          cat << 'EOF' > update-permissions.js
-          const fs = require('fs');
-          const manifestPath = 'android/app/src/main/AndroidManifest.xml';
-          if (fs.existsSync(manifestPath)) {
-            let manifest = fs.readFileSync(manifestPath, 'utf8');
-            const perms = [
-              'android.permission.INTERNET',
-              'android.permission.READ_EXTERNAL_STORAGE',
-              'android.permission.WRITE_EXTERNAL_STORAGE',
-              'android.permission.READ_MEDIA_IMAGES',
-              'android.permission.READ_MEDIA_VIDEO',
-              'android.permission.READ_MEDIA_AUDIO',
-              'android.permission.ACCESS_MEDIA_LOCATION'
-            ];
-            perms.forEach(p => {
-              if (!manifest.includes(p)) {
-                manifest = manifest.replace('</manifest>', `    <uses-permission android:name="${p}" />\n</manifest>`);
-              }
-            });
-            fs.writeFileSync(manifestPath, manifest, 'utf8');
-            console.log('Updated AndroidManifest.xml permissions successfully');
-          }
-          EOF
-          node update-permissions.js
-
-      - name: Generate Release Signing Keystore Certificate
+      - name: Generate Trusted Release Signing Keystore Certificate
         run: |
           KEYSTORE_PATH="android/app/harrys-release.keystore"
           keytool -genkeypair -v \
@@ -83,58 +56,30 @@ jobs:
             -keypass "HarrysAircon2026Pass" \
             -dname "CN=Harrys Aircon, OU=App, O=Harrys Aircon Electrical Solar, L=Pretoria, ST=Gauteng, C=ZA"
 
-      - name: Configure Signing in build.gradle
-        run: |
-          cat << 'EOF' > configure-gradle.js
-          const fs = require('fs');
-          const gradlePath = 'android/app/build.gradle';
-          if (fs.existsSync(gradlePath)) {
-            let gradle = fs.readFileSync(gradlePath, 'utf8');
-            const signingBlock = `
-        signingConfigs {
-            release {
-                storeFile file("harrys-release.keystore")
-                storePassword "HarrysAircon2026Pass"
-                keyAlias "harrys-key"
-                keyPassword "HarrysAircon2026Pass"
-            }
-        }`;
-            if (!gradle.includes('signingConfigs {')) {
-              gradle = gradle.replace(/buildTypes\s*\{/, signingBlock + '\n    buildTypes {');
-            }
-            if (!gradle.includes('signingConfig signingConfigs.release')) {
-              gradle = gradle.replace(/release\s*\{/, 'release {\n            signingConfig signingConfigs.release');
-            }
-            fs.writeFileSync(gradlePath, gradle, 'utf8');
-            console.log('Configured build.gradle signing configs successfully');
-          }
-          EOF
-          node configure-gradle.js
+      - name: Configure Android Permissions and Release Signing in Gradle
+        run: node scripts/configure-android.js
 
       - name: Build Android Release & Debug APKs with Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
-          ./gradlew assembleRelease --stacktrace || true
+          ./gradlew assembleRelease assembleDebug --stacktrace
 
       - name: Upload Signed Release APK Artifact
         uses: actions/upload-artifact@v4
-        continue-on-error: true
         with:
           name: Harrys-Aircon-Signed-Release.apk
-          path: android/app/build/outputs/apk/release/*.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Harrys-Aircon-Debug.apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Create or Update GitHub Release with APK
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
-        continue-on-error: true
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.1.0' }}
           name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.1.0 Release' }}
@@ -146,7 +91,6 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            android/app/build/outputs/apk/release/*.apk
-            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
