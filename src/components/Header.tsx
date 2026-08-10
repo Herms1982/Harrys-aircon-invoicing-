@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wrench, Smartphone, Monitor, ShieldAlert, Sparkles } from 'lucide-react';
+import { Wrench, Smartphone, Monitor, ShieldAlert, Sparkles, Download, Github } from 'lucide-react';
 import { BusinessSettings } from '../types';
 
 interface HeaderProps {
@@ -10,6 +10,7 @@ interface HeaderProps {
   lowStockCount: number;
   onOpenLowStock: () => void;
   onOpenAICopilot?: () => void;
+  onOpenAppUpdates?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   lowStockCount,
   onOpenLowStock,
   onOpenAICopilot,
+  onOpenAppUpdates,
 }) => {
   const tabTitles: Record<string, string> = {
     jobs: 'Callout Jobs & Invoices',
@@ -65,6 +67,18 @@ export const Header: React.FC<HeaderProps> = ({
               <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden sm:inline">{lowStockCount} Low Stock</span>
               <span className="sm:hidden">{lowStockCount}</span>
+            </button>
+          )}
+
+          {/* GitHub Update button */}
+          {onOpenAppUpdates && (
+            <button
+              onClick={onOpenAppUpdates}
+              className="flex items-center gap-1.5 text-xs bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-2.5 py-1.5 rounded-xl border border-slate-700/80 shadow-sm transition-all cursor-pointer"
+              title="Check GitHub for App & APK Updates"
+            >
+              <Github className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="hidden md:inline">Update App</span>
             </button>
           )}
 

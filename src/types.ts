@@ -121,4 +121,6 @@ export interface BusinessSettings {
   defaultHourlyCostInternal: number;
   defaultTaxRate: number;
   nextInvoiceNumber: number;
+  githubRepo?: string;
+  appVersion?: string;
 }

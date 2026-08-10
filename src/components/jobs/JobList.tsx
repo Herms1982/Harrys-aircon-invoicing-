@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Search, Calendar, MapPin, Clock, PackageCheck, FileText, CheckCircle2, Clock3, AlertCircle, DollarSign, TrendingUp, ChevronRight, Trash2 } from 'lucide-react';
+import { Plus, Search, Calendar, MapPin, Clock, PackageCheck, FileText, CheckCircle2, Clock3, AlertCircle, DollarSign, TrendingUp, ChevronRight, Trash2, FileDown } from 'lucide-react';
 import { CalloutJob, JobStatus, BusinessSettings } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
+import { downloadInvoicePDF } from '../../lib/exportUtils';
 
 interface JobListProps {
   jobs: CalloutJob[];
@@ -269,6 +270,14 @@ export const JobList: React.FC<JobListProps> = ({
 
                   {/* Actions */}
                   <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => downloadInvoicePDF(job, settings)}
+                      className="text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-bold px-2.5 py-1.5 rounded-xl border border-emerald-500/30 flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Download Invoice PDF"
+                    >
+                      <FileDown className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="hidden sm:inline">PDF</span>
+                    </button>
                     <button
                       onClick={() => onEditJob(job)}
                       className="text-xs text-slate-400 hover:text-white px-2.5 py-1.5 rounded-xl hover:bg-slate-800 transition-colors font-medium"

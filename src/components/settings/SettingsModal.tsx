@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Settings, Save, RefreshCw, Check, Building, Fuel, Clock, DollarSign, Trash2, ShieldCheck } from 'lucide-react';
+import { Settings, Save, RefreshCw, Check, Building, Fuel, Clock, DollarSign, Trash2, ShieldCheck, Github, Sparkles, Download } from 'lucide-react';
 import { BusinessSettings } from '../../types';
+import { DEFAULT_GITHUB_REPO, CURRENT_APP_VERSION } from '../../lib/updater';
 
 interface SettingsModalProps {
   settings: BusinessSettings;
   onSaveSettings: (settings: BusinessSettings) => void;
   onClearDemoData?: () => void;
   onResetData: () => void;
+  onOpenAppUpdates?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -14,10 +16,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onSaveSettings,
   onClearDemoData,
   onResetData,
+  onOpenAppUpdates,
 }) => {
   const [businessName, setBusinessName] = useState(settings.businessName);
   const [siteName, setSiteName] = useState(settings.siteName || "Harry's Aircon invoice app");
   const [website, setWebsite] = useState(settings.website || "https://harrysaircon.co.za");
+  const [githubRepo, setGithubRepo] = useState(settings.githubRepo || DEFAULT_GITHUB_REPO);
   const [ownerName, setOwnerName] = useState(settings.ownerName);
   const [phone, setPhone] = useState(settings.phone);
   const [email, setEmail] = useState(settings.email);
@@ -40,6 +44,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       businessName,
       siteName,
       website,
+      githubRepo,
       ownerName,
       phone,
       email,
@@ -79,6 +84,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
           <span><strong>Auto-Save Active:</strong> All changes, clients, stock, and callouts save automatically to phone local storage.</span>
         </div>
+      </div>
+
+      {/* GitHub App Updates Card */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-500/30 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Github className="w-4 h-4 text-indigo-400" />
+            <span className="font-bold text-white">GitHub In-App Updates (v{CURRENT_APP_VERSION})</span>
+            <span className="bg-indigo-500/20 text-indigo-300 text-[10px] font-mono px-2 py-0.5 rounded-full border border-indigo-400/30 font-bold">
+              APK Auto-Sync
+            </span>
+          </div>
+          <p className="text-slate-400 text-[11px]">
+            Check for new APK releases or software updates directly from repository <code className="text-indigo-300 font-mono">{githubRepo}</code>.
+          </p>
+        </div>
+
+        {onOpenAppUpdates && (
+          <button
+            type="button"
+            onClick={onOpenAppUpdates}
+            className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-md shadow-indigo-900/40 flex items-center justify-center gap-2 transition-all cursor-pointer border border-indigo-400/30 whitespace-nowrap"
+          >
+            <Download className="w-4 h-4" />
+            <span>Check For Updates</span>
+          </button>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">

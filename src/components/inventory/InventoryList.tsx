@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, Search, ShieldAlert, Package, TrendingUp, RefreshCw, History, Edit, Trash2, ArrowUpRight, AlertTriangle, Boxes } from 'lucide-react';
+import { Plus, Search, ShieldAlert, Package, TrendingUp, RefreshCw, History, Edit, Trash2, ArrowUpRight, AlertTriangle, Boxes, FileSpreadsheet, FileDown, Printer, Share2, Check } from 'lucide-react';
 import { StockItem, BusinessSettings } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
+import { exportStockToExcel, downloadStockPDF, shareStockListText } from '../../lib/exportUtils';
 
 interface InventoryListProps {
   stock: StockItem[];
@@ -25,6 +26,15 @@ export const InventoryList: React.FC<InventoryListProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
+  const [copiedShare, setCopiedShare] = useState(false);
+
+  const handleShareList = async () => {
+    const isShared = await shareStockListText(stock, settings);
+    if (!isShared) {
+      setCopiedShare(true);
+      setTimeout(() => setCopiedShare(false), 2500);
+    }
+  };
 
   // Extract unique categories
   const categories = ['ALL', ...Array.from(new Set(stock.map((s) => s.category)))];
@@ -73,10 +83,46 @@ export const InventoryList: React.FC<InventoryListProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+          <button
+            onClick={() => exportStockToExcel(stock, settings)}
+            className="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 font-bold px-3 py-2 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+            title="Export stock list to Microsoft Excel (.xlsx)"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span>Excel</span>
+          </button>
+
+          <button
+            onClick={() => downloadStockPDF(stock, settings)}
+            className="bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 font-bold px-3 py-2 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+            title="Download formatted Stock Inventory PDF Report"
+          >
+            <FileDown className="w-4 h-4 text-indigo-400" />
+            <span>PDF</span>
+          </button>
+
+          <button
+            onClick={handleShareList}
+            className="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 font-bold px-3 py-2 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            title="Share or Copy stock catalog text for WhatsApp/Email"
+          >
+            {copiedShare ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
+            <span>{copiedShare ? 'Copied' : 'Share'}</span>
+          </button>
+
+          <button
+            onClick={() => window.print()}
+            className="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 font-bold px-3 py-2 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            title="Print stock list"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>Print</span>
+          </button>
+
           <button
             onClick={onOpenLogs}
-            className="flex-1 sm:flex-initial bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            className="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 font-bold px-3 py-2 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
             <History className="w-3.5 h-3.5" />
             <span>Audit Log</span>
@@ -84,7 +130,7 @@ export const InventoryList: React.FC<InventoryListProps> = ({
 
           <button
             onClick={onAddStock}
-            className="flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2.5 rounded-2xl text-xs shadow-lg shadow-indigo-900/40 flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-indigo-400/30"
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-2xl text-xs shadow-lg shadow-indigo-900/40 flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-indigo-400/30"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
             <span>Add Part Item</span>

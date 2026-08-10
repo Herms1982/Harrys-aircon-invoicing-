@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Printer, CheckCircle2, TrendingUp, ChevronDown, ChevronUp, Copy, Check, MapPin, Phone, Mail, Share2, Sparkles } from 'lucide-react';
+import { X, Printer, CheckCircle2, TrendingUp, ChevronDown, ChevronUp, Copy, Check, MapPin, Phone, Mail, Share2, Sparkles, FileDown } from 'lucide-react';
 import { CalloutJob, BusinessSettings, JobStatus } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
+import { downloadInvoicePDF } from '../../lib/exportUtils';
 import confetti from 'canvas-confetti';
 
 interface InvoiceViewModalProps {
@@ -86,12 +87,21 @@ Thank you for your business!`;
             </button>
 
             <button
-              onClick={handlePrint}
-              className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer border border-indigo-400/30"
-              title="Print invoice or save as PDF"
+              onClick={() => downloadInvoicePDF(job, settings)}
+              className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer border border-emerald-400/30"
+              title="Download PDF directly to your device"
             >
-              <Printer className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Print / Save PDF</span>
+              <FileDown className="w-4 h-4 stroke-[2.5]" />
+              <span>Save PDF</span>
+            </button>
+
+            <button
+              onClick={handlePrint}
+              className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition-all cursor-pointer border border-indigo-400/30"
+              title="Print invoice or save as PDF via system dialog"
+            >
+              <Printer className="w-4 h-4 stroke-[2.5]" />
+              <span className="hidden sm:inline">Print</span>
             </button>
 
             <button

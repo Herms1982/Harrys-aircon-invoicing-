@@ -10,6 +10,7 @@ import { StockLogModal } from './components/inventory/StockLogModal';
 import { ClientList } from './components/clients/ClientList';
 import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
 import { SettingsModal } from './components/settings/SettingsModal';
+import { AppUpdateModal } from './components/settings/AppUpdateModal';
 import { AICopilotModal } from './components/ai/AICopilotModal';
 import { AIParsedNoteResult } from './lib/ai';
 
@@ -57,6 +58,7 @@ export default function App() {
 
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
+  const [isAppUpdateOpen, setIsAppUpdateOpen] = useState(false);
 
   // Apply parsed AI note directly to New Callout Job
   const handleApplyParsedAIJob = (parsed: AIParsedNoteResult) => {
@@ -339,6 +341,7 @@ export default function App() {
               setActiveTab('inventory');
             }}
             onOpenAICopilot={() => setIsAICopilotOpen(true)}
+            onOpenAppUpdates={() => setIsAppUpdateOpen(true)}
           />
 
           {/* Floating Toast Alert Banner */}
@@ -431,6 +434,7 @@ export default function App() {
                 }}
                 onClearDemoData={handleClearDemoData}
                 onResetData={handleResetData}
+                onOpenAppUpdates={() => setIsAppUpdateOpen(true)}
               />
             )}
           </main>
@@ -499,6 +503,13 @@ export default function App() {
         clients={clients}
         settings={settings}
         onApplyParsedJob={handleApplyParsedAIJob}
+      />
+
+      <AppUpdateModal
+        isOpen={isAppUpdateOpen}
+        onClose={() => setIsAppUpdateOpen(false)}
+        settings={settings}
+        onUpdateSettings={(s) => setSettings(s)}
       />
     </div>
   );
