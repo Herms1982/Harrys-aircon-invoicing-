@@ -128,35 +128,74 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
           )}
 
           {!isChecking && checkResult?.error && (
-            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 space-y-2">
+            <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-300 space-y-3">
               <div className="flex items-center gap-2 font-bold text-xs">
-                <AlertCircle className="w-4 h-4 text-amber-400" />
-                <span>GitHub Update Check Notice</span>
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>GitHub Connection Note</span>
               </div>
               <p className="text-[11px] text-amber-200/90 leading-relaxed">{checkResult.error}</p>
-              <div className="pt-2 text-[10px] text-slate-400 border-t border-amber-500/20 flex items-center justify-between">
-                <span>To publish updates: create a Release tag on GitHub with an .apk asset attached.</span>
-                <a
-                  href={`https://github.com/${repoInput}/releases`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-indigo-400 hover:underline flex items-center gap-1 font-bold"
-                >
-                  View GitHub Releases <ExternalLink className="w-3 h-3" />
-                </a>
+              <div className="pt-2 text-[11px] text-slate-300 border-t border-amber-500/20 flex flex-wrap gap-2 items-center justify-between">
+                <span>Direct GitHub Links:</span>
+                <div className="flex gap-2">
+                  <a
+                    href={checkResult.releasePageUrl || `https://github.com/${repoInput}/releases`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded-lg font-bold flex items-center gap-1 transition-colors"
+                  >
+                    <span>Releases</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                  <a
+                    href={checkResult.actionsPageUrl || `https://github.com/${repoInput}/actions`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 rounded-lg font-bold flex items-center gap-1 transition-colors"
+                  >
+                    <span>Actions Build Runs</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
               </div>
             </div>
           )}
 
           {!isChecking && checkResult && !checkResult.error && !checkResult.hasUpdate && (
-            <div className="p-5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-300 space-y-2">
-              <div className="flex items-center gap-2 font-bold text-xs">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <span>You are on the Latest Version (v{checkResult.currentVersion})</span>
+            <div className="p-5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-300 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 font-bold text-xs">
+                  <CheckCircle2 className="w-4.5 h-4.5 text-emerald-400 shrink-0" />
+                  <span>Installed Build Up-to-Date (v{checkResult.currentVersion})</span>
+                </div>
+                <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded-full font-mono text-emerald-300 font-bold">
+                  v{checkResult.currentVersion}
+                </span>
               </div>
-              <p className="text-[11px] text-emerald-200/80">
-                Your application is completely up to date. No new releases found on GitHub repository <strong className="text-white">{repoInput}</strong>.
+              <p className="text-[11px] text-emerald-200/80 leading-relaxed">
+                Your application is currently aligned with the latest release on <strong className="text-white">{repoInput}</strong>.
               </p>
+              <div className="pt-2 flex flex-wrap gap-2">
+                {checkResult.apkDownloadUrl && (
+                  <a
+                    href={checkResult.apkDownloadUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 rounded-lg font-bold flex items-center gap-1 transition-colors text-[11px]"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Latest APK ({checkResult.latestVersion})</span>
+                  </a>
+                )}
+                <a
+                  href={checkResult.releasePageUrl || `https://github.com/${repoInput}/releases`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-bold flex items-center gap-1 transition-colors text-[11px]"
+                >
+                  <span>Releases Page</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
             </div>
           )}
 
@@ -165,29 +204,30 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
               <div className="flex items-start justify-between">
                 <div>
                   <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-400/40 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                    New Update Available!
+                    New Update Ready!
                   </span>
                   <h3 className="text-base font-bold text-white mt-1">
                     Release {checkResult.releaseTitle || checkResult.latestVersion}
                   </h3>
                   <p className="text-slate-400 text-[11px]">
-                    Published on {checkResult.publishedAt || 'GitHub'} {checkResult.apkSizeFormatted ? `• ${checkResult.apkSizeFormatted}` : ''}
+                    {checkResult.publishedAt ? `Published on ${checkResult.publishedAt}` : 'GitHub Automated Build'}{' '}
+                    {checkResult.apkSizeFormatted ? `• ${checkResult.apkSizeFormatted}` : ''}
                   </p>
                 </div>
                 <div className="p-2 bg-indigo-600/20 rounded-xl text-indigo-300 border border-indigo-500/30">
-                  <Sparkles className="w-6 h-6 animate-pulse" />
+                  <Sparkles className="w-6 h-6 animate-pulse text-amber-300" />
                 </div>
               </div>
 
               {/* Release Notes */}
               <div className="bg-slate-900/90 p-3.5 rounded-xl border border-slate-800 space-y-1">
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Changelog & Release Notes:</span>
+                <span className="text-[10px] uppercase font-bold text-indigo-400 block">Changelog & Notes:</span>
                 <p className="text-slate-200 text-xs whitespace-pre-wrap leading-relaxed font-sans">
                   {checkResult.releaseNotes}
                 </p>
               </div>
 
-              {/* Download CTA Button */}
+              {/* Download CTA Buttons */}
               <div className="pt-2 flex flex-col sm:flex-row gap-2">
                 {checkResult.apkDownloadUrl && (
                   <a
@@ -197,7 +237,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
                     className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 cursor-pointer text-xs"
                   >
                     <Download className="w-4 h-4 stroke-[2.5]" />
-                    <span>Download Update APK ({checkResult.latestVersion})</span>
+                    <span>Download APK Update ({checkResult.latestVersion})</span>
                   </a>
                 )}
 
@@ -207,7 +247,7 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
                   rel="noreferrer"
                   className="px-4 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-center gap-1.5 text-xs transition-colors cursor-pointer border border-slate-700"
                 >
-                  <span>Open GitHub</span>
+                  <span>Open GitHub Releases</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
