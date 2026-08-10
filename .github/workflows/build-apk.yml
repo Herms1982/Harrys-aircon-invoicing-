@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -28,11 +28,11 @@ jobs:
       - name: Build Web Application
         run: npm run build
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -60,51 +60,39 @@ jobs:
         run: |
           node -e '
           const fs = require("fs");
-          
-          // 1. Configure AndroidManifest.xml permissions
           const manifestPath = "android/app/src/main/AndroidManifest.xml";
           if (fs.existsSync(manifestPath)) {
             let manifest = fs.readFileSync(manifestPath, "utf8");
-            const permissions = `
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
-    <uses-permission android:name="android.permission.ACCESS_MEDIA_LOCATION" />`;
-            if (!manifest.includes("android.permission.INTERNET")) {
-              manifest = manifest.replace("</manifest>", permissions + "\n</manifest>");
-              fs.writeFileSync(manifestPath, manifest, "utf8");
-              console.log("Updated AndroidManifest.xml permissions");
-            }
+            const perms = [
+              "android.permission.INTERNET",
+              "android.permission.READ_EXTERNAL_STORAGE",
+              "android.permission.WRITE_EXTERNAL_STORAGE",
+              "android.permission.READ_MEDIA_IMAGES",
+              "android.permission.READ_MEDIA_VIDEO",
+              "android.permission.READ_MEDIA_AUDIO",
+              "android.permission.ACCESS_MEDIA_LOCATION"
+            ];
+            perms.forEach(p => {
+              if (!manifest.includes(p)) {
+                manifest = manifest.replace("</manifest>", "    <uses-permission android:name=\"" + p + "\" />\n</manifest>");
+              }
+            });
+            fs.writeFileSync(manifestPath, manifest, "utf8");
+            console.log("Updated AndroidManifest.xml permissions");
           }
 
-          // 2. Inject Signing Config into build.gradle cleanly without syntax errors
           const gradlePath = "android/app/build.gradle";
           if (fs.existsSync(gradlePath)) {
             let gradle = fs.readFileSync(gradlePath, "utf8");
-            
-            const signingBlock = `
-    signingConfigs {
-        release {
-            storeFile file("harrys-release.keystore")
-            storePassword "HarrysAircon2026Pass"
-            keyAlias "harrys-key"
-            keyPassword "HarrysAircon2026Pass"
-        }
-    }`;
-
+            const signingBlock = "\n    signingConfigs {\n        release {\n            storeFile file(\"harrys-release.keystore\")\n            storePassword \"HarrysAircon2026Pass\"\n            keyAlias \"harrys-key\"\n            keyPassword \"HarrysAircon2026Pass\"\n        }\n    }\n";
             if (!gradle.includes("signingConfigs {")) {
-              gradle = gradle.replace(/android\s*\{/, "android {\n" + signingBlock);
+              gradle = gradle.replace(/android\s*\{/, "android {" + signingBlock);
             }
-
             if (!gradle.includes("signingConfig signingConfigs.release")) {
               gradle = gradle.replace(/release\s*\{/, "release {\n            signingConfig signingConfigs.release");
             }
-
             fs.writeFileSync(gradlePath, gradle, "utf8");
-            console.log("Updated android/app/build.gradle cleanly with signingConfigs block");
+            console.log("Updated android/app/build.gradle with signingConfigs block");
           }
           '
 
