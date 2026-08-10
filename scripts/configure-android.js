@@ -30,6 +30,17 @@ if (fs.existsSync(varsGradlePath)) {
   console.warn('⚠️ android/variables.gradle not found');
 }
 
+// 3. Ensure Gradle Wrapper Distribution URL is compatible (gradle-8.11.1-all.zip)
+const wrapperPath = path.join(baseDir, 'android', 'gradle', 'wrapper', 'gradle-wrapper.properties');
+if (fs.existsSync(wrapperPath)) {
+  let wrapper = fs.readFileSync(wrapperPath, 'utf8');
+  if (wrapper.includes('gradle-8.14') || !wrapper.includes('gradle-8.11.1')) {
+    wrapper = wrapper.replace(/distributionUrl=.*$/m, 'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.11.1-all.zip');
+    fs.writeFileSync(wrapperPath, wrapper, 'utf8');
+    console.log('✓ Updated gradle-wrapper.properties to Gradle 8.11.1');
+  }
+}
+
 // 3. AndroidManifest.xml Permissions
 const manifestPath = path.join(baseDir, 'android', 'app', 'src', 'main', 'AndroidManifest.xml');
 if (fs.existsSync(manifestPath)) {
