@@ -5,7 +5,7 @@ export const INITIAL_SETTINGS: BusinessSettings = {
   siteName: "Harry's Aircon invoice app",
   website: "https://harrysaircon.co.za",
   ownerName: 'Harry',
-  phone: '+27 11 382 9100',
+  phone: '0716896139 / 0787976058',
   email: 'service@harrysaircon.co.za',
   address: 'Rayton, Pretoria, Gauteng. South Africa 1001',
   taxNumber: '',
@@ -16,6 +16,8 @@ export const INITIAL_SETTINGS: BusinessSettings = {
   defaultHourlyCostInternal: 250.0,
   defaultTaxRate: 15.0, // 15% VAT in South Africa
   nextInvoiceNumber: 1001,
+  githubRepo: 'herms1982/Harrys-aircon-invoicing-',
+  appVersion: '1.1.0',
 };
 
 // Default Electrician Markup (35% standard trade markup)

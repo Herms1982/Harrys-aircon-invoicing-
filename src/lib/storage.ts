@@ -98,6 +98,14 @@ export function getStoredSettings(): BusinessSettings {
         settings.address = INITIAL_SETTINGS.address;
         updated = true;
       }
+      if (settings.phone === '+27 11 382 9100' || !settings.phone || settings.phone === '+27 11 000 0000') {
+        settings.phone = INITIAL_SETTINGS.phone;
+        updated = true;
+      }
+      if (!settings.githubRepo || settings.githubRepo === 'herms1982/harrys-aircon-app') {
+        settings.githubRepo = INITIAL_SETTINGS.githubRepo;
+        updated = true;
+      }
       if (updated) {
         saveStoredSettings(settings);
       }

@@ -1,5 +1,5 @@
 export const CURRENT_APP_VERSION = '1.1.0';
-export const DEFAULT_GITHUB_REPO = 'herms1982/harrys-aircon-app';
+export const DEFAULT_GITHUB_REPO = 'herms1982/Harrys-aircon-invoicing-';
 
 export interface GitHubReleaseAsset {
   name: string;
