@@ -23,12 +23,13 @@ jobs:
           node-version: 22
           cache: npm
 
-      # 3. Install Dependencies (Handles unsynced lockfiles gracefully)
+      # 3. Install Dependencies (Includes react-is fix for recharts)
       - name: Install Dependencies
         run: |
           npm install --legacy-peer-deps
+          npm install react-is --save
 
-      # 4. Check Git Case Sensitivity (Helps spot missing or mis-cased files)
+      # 4. Check Git Case Sensitivity
       - name: Check Git File Casing
         run: |
           git config core.ignorecase false
@@ -42,7 +43,7 @@ jobs:
       - name: Build Web Assets
         run: npm run build
 
-      # 7. Setup Java JDK 21 (Updated to @v5 to fix deprecation warning)
+      # 7. Setup Java JDK 21
       - name: Setup Java JDK
         uses: actions/setup-java@v5
         with:
