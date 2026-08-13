@@ -37,32 +37,15 @@ async function ensureValidWrapperJar() {
   console.log('⚠️ gradle-wrapper.jar missing or corrupted. Downloading fresh binary...');
   const jarUrl = 'https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar';
   
-  return new Promise((resolve) => {
-    https.get(jarUrl, (res) => {
-      if (res.statusCode === 302 || res.statusCode === 301) {
-        https.get(res.headers.location, (redirectRes) => {
-          const file = fs.createWriteStream(wrapperJarPath);
-          redirectRes.pipe(file);
-          file.on('finish', () => {
-            file.close();
-            console.log('✓ Successfully downloaded fresh gradle-wrapper.jar');
-            resolve();
-          });
-        });
-      } else {
-        const file = fs.createWriteStream(wrapperJarPath);
-        res.pipe(file);
-        file.on('finish', () => {
-          file.close();
-          console.log('✓ Successfully downloaded fresh gradle-wrapper.jar');
-          resolve();
-        });
-      }
-    }).on('error', (err) => {
-      console.error('❌ Failed to download gradle-wrapper.jar:', err.message);
-      resolve();
-    });
-  });
+  try {
+    const res = await fetch(jarUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    const arrayBuffer = await res.arrayBuffer();
+    fs.writeFileSync(wrapperJarPath, Buffer.from(arrayBuffer));
+    console.log('✓ Successfully downloaded fresh gradle-wrapper.jar');
+  } catch (err) {
+    console.error('❌ Failed to download gradle-wrapper.jar:', err.message);
+  }
 }
 
 async function run() {
