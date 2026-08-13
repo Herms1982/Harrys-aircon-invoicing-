@@ -6,7 +6,7 @@ console.log('--- Configuring Android Permissions, SDK Versions & Gradle Signing 
 
 const baseDir = process.cwd();
 
-// 1. Check and repair android/gradle/wrapper/gradle-wrapper.jar if missing or corrupt
+// 1. Check and repair android/gradle/wrapper/gradle-wrapper.jar
 const wrapperJarPath = path.join(baseDir, 'android', 'gradle', 'wrapper', 'gradle-wrapper.jar');
 async function ensureValidWrapperJar() {
   const dir = path.dirname(wrapperJarPath);
@@ -14,27 +14,8 @@ async function ensureValidWrapperJar() {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  let isValid = false;
-  if (fs.existsSync(wrapperJarPath)) {
-    const stat = fs.statSync(wrapperJarPath);
-    if (stat.size > 50000) {
-      // Check magic numbers for zip file (PK\x03\x04)
-      const buffer = Buffer.alloc(4);
-      const fd = fs.openSync(wrapperJarPath, 'r');
-      fs.readSync(fd, buffer, 0, 4, 0);
-      fs.closeSync(fd);
-      if (buffer[0] === 0x50 && buffer[1] === 0x4b && buffer[2] === 0x03 && buffer[3] === 0x04) {
-        isValid = true;
-      }
-    }
-  }
-
-  if (isValid) {
-    console.log('✓ Valid gradle-wrapper.jar verified');
-    return;
-  }
-
-  console.log('⚠️ gradle-wrapper.jar missing or corrupted. Downloading fresh binary...');
+  // Always force download the pristine, valid Gradle Wrapper JAR to fix any git corruption
+  console.log('Downloading fresh official gradle-wrapper.jar binary...');
   const jarUrl = 'https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar';
   
   try {
