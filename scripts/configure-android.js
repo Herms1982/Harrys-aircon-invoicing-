@@ -14,9 +14,9 @@ async function ensureValidWrapperJar() {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  // Always force download the pristine, valid Gradle Wrapper JAR to fix any git corruption
-  console.log('Downloading fresh official gradle-wrapper.jar binary...');
-  const jarUrl = 'https://raw.githubusercontent.com/gradle/gradle/v8.11.1/gradle/wrapper/gradle-wrapper.jar';
+  // Download official Capacitor gradle-wrapper.jar which includes Main-Class in MANIFEST.MF
+  console.log('Downloading official gradle-wrapper.jar binary...');
+  const jarUrl = 'https://raw.githubusercontent.com/ionic-team/capacitor/main/android/gradle/wrapper/gradle-wrapper.jar';
   
   try {
     const res = await fetch(jarUrl);
