@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import https from 'https';
+import { generateAllAndroidAssets } from './generate-android-assets.js';
 
 console.log('--- Configuring Android Permissions, SDK Versions & Gradle Signing ---');
 
@@ -136,6 +137,9 @@ async function run() {
   } else {
     console.warn('⚠️ android/app/build.gradle not found');
   }
+
+  // 7. Repair & Generate Valid Mipmap and Splash Icon Assets (fixes AAPT compilation errors)
+  generateAllAndroidAssets(baseDir);
 
   console.log('--- Android configuration complete ---');
 }
