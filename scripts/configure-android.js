@@ -45,14 +45,28 @@ async function run() {
     console.warn('⚠️ Top-level android/build.gradle not found');
   }
 
-  // 3. Fix android/variables.gradle SDK Versions (Change compileSdk/targetSdk 36 -> 35)
+  // 3. Fix android/variables.gradle SDK & AndroidX Dependency Versions
   const varsGradlePath = path.join(baseDir, 'android', 'variables.gradle');
   if (fs.existsSync(varsGradlePath)) {
-    let varsGradle = fs.readFileSync(varsGradlePath, 'utf8');
-    varsGradle = varsGradle.replace(/compileSdkVersion = 36/g, 'compileSdkVersion = 35');
-    varsGradle = varsGradle.replace(/targetSdkVersion = 36/g, 'targetSdkVersion = 35');
-    fs.writeFileSync(varsGradlePath, varsGradle, 'utf8');
-    console.log('✓ Updated android/variables.gradle compileSdk/targetSdk to 35');
+    const validVarsGradle = `ext {
+    minSdkVersion = 24
+    compileSdkVersion = 35
+    targetSdkVersion = 35
+    androidxActivityVersion = '1.9.3'
+    androidxAppCompatVersion = '1.7.0'
+    androidxCoordinatorLayoutVersion = '1.2.0'
+    androidxCoreVersion = '1.15.0'
+    androidxFragmentVersion = '1.8.5'
+    coreSplashScreenVersion = '1.0.1'
+    androidxWebkitVersion = '1.12.1'
+    junitVersion = '4.13.2'
+    androidxJunitVersion = '1.2.1'
+    androidxEspressoCoreVersion = '3.6.1'
+    cordovaAndroidVersion = '10.1.1'
+}
+`;
+    fs.writeFileSync(varsGradlePath, validVarsGradle, 'utf8');
+    console.log('✓ Configured android/variables.gradle with compileSdk 35 and valid AndroidX dependencies');
   } else {
     console.warn('⚠️ android/variables.gradle not found');
   }

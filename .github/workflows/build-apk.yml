@@ -79,7 +79,7 @@ jobs:
           node scripts/configure-android.js
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease --stacktrace
+          ./gradlew assembleRelease --stacktrace --info
 
       - name: Build Android Debug APK with Gradle
         env:
