@@ -16,7 +16,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. Setup Node.js Environment
+      # 2. Setup Node.js Environment (Node 22)
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -28,40 +28,46 @@ jobs:
         run: |
           npm install --legacy-peer-deps
 
-      # 4. Configure Android Environment Pre-Build
-      - name: Configure Android
+      # 4. Check Git Case Sensitivity (Helps spot missing or mis-cased files)
+      - name: Check Git File Casing
+        run: |
+          git config core.ignorecase false
+          git status
+
+      # 5. Configure Android Environment Pre-Build
+      - name: Configure Android Pre-Build
         run: node scripts/configure-android.js
 
-      # 5. Build Web Assets
+      # 6. Build Web Assets (Vite/Rollup)
       - name: Build Web Assets
         run: npm run build
 
-      # 6. Setup Java JDK 21 (Updated to v5)
+      # 7. Setup Java JDK 21 (Updated to @v5 to fix deprecation warning)
       - name: Setup Java JDK
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '21'
 
-      # 7. Setup Gradle Action
+      # 8. Setup Gradle Action
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # 8. Setup Android SDK & Accept Licenses automatically
+      # 9. Setup Android SDK & Accept Licenses automatically
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
           cmdline-tools-version: 12266719
           accept-android-sdk-licenses: true
 
-      # 9. Sync Capacitor Native Android Project
+      # 10. Sync Capacitor Native Android Project
       - name: Sync Capacitor Android
         run: |
           npx cap add android || true
           npx cap copy android
           npx cap sync android
 
-      # 10. Generate Keystore if missing
+      # 11. Generate Keystore if missing
       - name: Generate Release Keystore
         run: |
           mkdir -p android/app
@@ -80,11 +86,11 @@ jobs:
             echo "Keystore $KEYSTORE_PATH already exists."
           fi
 
-      # 11. Run Post-Keystore Android Configuration Script
+      # 12. Run Post-Keystore Android Configuration Script
       - name: Run Post-Keystore Configuration
         run: node scripts/configure-android.js
 
-      # 12. Build Release APK via Gradle Wrapper
+      # 13. Build Release APK via Gradle Wrapper
       - name: Build Android APK
         env:
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2048m -Dorg.gradle.daemon=false"
@@ -93,7 +99,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --stacktrace --info
 
-      # 13. Upload APK Artifact
+      # 14. Upload APK Artifact
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
