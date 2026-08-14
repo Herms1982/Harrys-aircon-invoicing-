@@ -109,45 +109,61 @@ export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings):
 
   const totals = calculateJobTotals(job);
 
-  // Colors
-  const primaryColor = [30, 41, 59]; // slate-800
-  const accentColor = [79, 70, 229]; // indigo-600
+  // White, Yellow and Royal Blue Palette
+  const royalBlue = [30, 58, 138]; // #1e3a8a
+  const goldenYellow = [234, 179, 8]; // #eab308
+  const brightYellow = [250, 204, 21]; // #facc15
 
   // 1. Header & Business Name
-  doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-  doc.rect(0, 0, 210, 32, 'F');
+  // Top Yellow Accent Line
+  doc.setFillColor(brightYellow[0], brightYellow[1], brightYellow[2]);
+  doc.rect(0, 0, 210, 3.5, 'F');
+
+  // Main Royal Blue Header Banner
+  doc.setFillColor(royalBlue[0], royalBlue[1], royalBlue[2]);
+  doc.rect(0, 3.5, 210, 34, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
-  doc.text(settings.businessName || "Harry's Aircon Electrical & Solar", 14, 16);
+  doc.setFontSize(16);
+  doc.text(settings.businessName || "Harrys aircon and Electrical", 14, 15);
 
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
+  doc.setTextColor(224, 242, 254); // sky-100
   doc.text(
-    `${settings.address || 'South Africa'} | Tel: ${settings.phone || 'N/A'} | Email: ${settings.email || 'N/A'}`,
+    `${settings.address || 'Pretoria, South Africa'} | Tel: ${settings.phone || '0716896139'} | ${settings.email || 'service@harrysaircon.co.za'}`,
     14,
-    23
+    21.5
   );
 
-  // Invoice Title & Badge
+  // Slogan Banner
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bolditalic');
+  doc.setTextColor(brightYellow[0], brightYellow[1], brightYellow[2]); // Yellow slogan
+  const sloganText = settings.slogan || "From Electrical, Solar, Security, CCTV, Refrigeration and Air Conditioning — We've Got You Covered";
+  doc.text(sloganText, 14, 28);
+
+  // Invoice Title & Badge in Header
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
+  doc.setTextColor(brightYellow[0], brightYellow[1], brightYellow[2]);
   doc.text('INVOICE', 196, 17, { align: 'right' });
 
-  doc.setFontSize(10);
+  doc.setFontSize(10.5);
   doc.setFont('helvetica', 'bold');
-  doc.text(job.invoiceNumber, 196, 24, { align: 'right' });
+  doc.setTextColor(255, 255, 255);
+  doc.text(`#${job.invoiceNumber}`, 196, 25, { align: 'right' });
 
   // 2. Client & Job Metadata
-  let y = 42;
+  let y = 44;
 
-  // Left Box: Billed To
-  doc.setDrawColor(226, 232, 240);
-  doc.setFillColor(248, 250, 252);
-  doc.roundedRect(14, y, 90, 32, 3, 3, 'FD');
+  // Left Box: Billed To (White background with blue border)
+  doc.setDrawColor(191, 219, 254); // blue-200
+  doc.setFillColor(248, 250, 255); // soft light blue-white
+  doc.roundedRect(14, y, 90, 32, 2.5, 2.5, 'FD');
 
-  doc.setTextColor(100, 116, 139);
+  doc.setTextColor(30, 58, 138); // royal-blue
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.text('BILLED TO:', 18, y + 6);
@@ -157,34 +173,34 @@ export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings):
   doc.setFont('helvetica', 'bold');
   doc.text(job.clientName || 'Valued Customer', 18, y + 13);
 
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
   doc.text(job.clientPhone || 'No Phone', 18, y + 19);
   doc.text(job.clientAddress || 'No Address', 18, y + 25);
 
   // Right Box: Invoice Meta
-  doc.roundedRect(108, y, 88, 32, 3, 3, 'FD');
+  doc.roundedRect(108, y, 88, 32, 2.5, 2.5, 'FD');
 
-  doc.setTextColor(100, 116, 139);
+  doc.setTextColor(30, 58, 138);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.text('INVOICE DETAILS:', 112, y + 6);
 
   doc.setTextColor(15, 23, 42);
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
   doc.text(`Date: ${job.date}`, 112, y + 13);
-  doc.text(`Job Title: ${job.jobTitle}`, 112, y + 19);
+  doc.text(`Job: ${job.jobTitle}`, 112, y + 19);
   doc.text(`Status: ${job.status.toUpperCase()}`, 112, y + 25);
 
   y += 38;
 
   // Work Done Description
   if (job.workDone) {
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(71, 85, 105);
+    doc.setTextColor(30, 58, 138);
     doc.text('WORK PERFORMED / SERVICE SUMMARY:', 14, y);
     y += 5;
 
@@ -201,7 +217,7 @@ export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings):
   // Callout / Travel Charge
   if (job.kmTravelled > 0) {
     tableRows.push([
-      `Travel / Callout (${job.kmTravelled} km)`,
+      `Travel / Callout (${job.kmTravelled} km round trip)`,
       '1',
       formatCurrency(job.travelCharge, settings.currencySymbol),
       '0%',
@@ -212,7 +228,7 @@ export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings):
   // Labor Charge
   if (job.hoursOnSite > 0) {
     tableRows.push([
-      `On-Site Technician Labor (${job.hoursOnSite} hrs @ ${formatCurrency(job.hourlyRateClient, settings.currencySymbol)}/hr)`,
+      `Technician Labor (${job.hoursOnSite} hrs @ ${formatCurrency(job.hourlyRateClient, settings.currencySymbol)}/hr)`,
       `${job.hoursOnSite}`,
       formatCurrency(job.hourlyRateClient, settings.currencySymbol),
       '0%',
@@ -248,7 +264,7 @@ export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings):
     body: tableRows,
     theme: 'grid',
     headStyles: {
-      fillColor: accentColor as [number, number, number],
+      fillColor: royalBlue as [number, number, number],
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 9,
@@ -272,11 +288,11 @@ export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings):
   // 4. Totals Block
   let totalY = finalY;
 
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
+  doc.setFillColor(248, 250, 255);
+  doc.setDrawColor(191, 219, 254);
   doc.roundedRect(118, totalY, 78, 38, 3, 3, 'FD');
 
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(71, 85, 105);
 
@@ -295,9 +311,9 @@ export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings):
 
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
+  doc.setTextColor(30, 58, 138);
   doc.text('TOTAL DUE:', 122, totalY + 30);
-  doc.setTextColor(79, 70, 229);
+  doc.setTextColor(180, 83, 9); // amber gold total
   doc.text(formatCurrency(totals.totalInvoicePrice, settings.currencySymbol), 192, totalY + 30, { align: 'right' });
 
   // 5. Banking Details / Footer
@@ -307,14 +323,14 @@ export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings):
     footerY = 20;
   }
 
-  // Draw Banking Details Card Box
-  doc.setDrawColor(203, 213, 225); // slate-300
-  doc.setFillColor(248, 250, 252); // slate-50
-  doc.roundedRect(14, footerY, 182, 34, 2, 2, 'FD');
+  // Draw Banking Details Card Box with Yellow accent border
+  doc.setDrawColor(234, 179, 8); // amber-500 / yellow
+  doc.setFillColor(254, 252, 232); // yellow-50 / light cream
+  doc.roundedRect(14, footerY, 182, 34, 2.5, 2.5, 'FD');
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
+  doc.setTextColor(30, 58, 138); // Royal Blue
   doc.text('BANKING & EFT PAYMENT DETAILS:', 18, footerY + 6);
 
   doc.setFontSize(8.5);

@@ -1,8 +1,8 @@
 import { StockItem, Client, CalloutJob, BusinessSettings } from '../types';
 
 export const INITIAL_SETTINGS: BusinessSettings = {
-  businessName: "Harry's Aircon Electrical and Solar services",
-  siteName: "Harry's Aircon invoice app",
+  businessName: "Harrys aircon and Electrical",
+  siteName: "Harry's Aircon & Electrical App",
   website: "https://harrysaircon.co.za",
   ownerName: 'Harry',
   phone: '0716896139 / 0787976058',
@@ -21,7 +21,9 @@ export const INITIAL_SETTINGS: BusinessSettings = {
   accountName: 'Harrys aircon and Electrical',
   accountNumber: '53002734919',
   branchCode: '250655',
-  githubRepo: 'herms1982/Harrys-aircon-invoicing-',
+  slogan: "From Electrical, Solar, Security, CCTV, Refrigeration and Air Conditioning — We've Got You Covered.",
+  logoUrl: '/logo.jpg',
+  githubRepo: 'herms1982/Harrys-aircon-invoicing',
   appVersion: '1.1.0',
 };
 

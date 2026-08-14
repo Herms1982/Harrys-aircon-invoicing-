@@ -1,5 +1,5 @@
 export const CURRENT_APP_VERSION = '1.1.0';
-export const DEFAULT_GITHUB_REPO = 'herms1982/Harrys-aircon-invoicing-';
+export const DEFAULT_GITHUB_REPO = 'herms1982/Harrys-aircon-invoicing';
 
 export interface GitHubReleaseAsset {
   name: string;
@@ -65,6 +65,14 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+export function cleanRepoPath(repoPath: string): string {
+  return repoPath
+    .replace(/^https?:\/\/github\.com\//i, '')
+    .replace(/\.git$/i, '')
+    .replace(/\/+$/, '')
+    .trim();
+}
+
 /**
  * Fetch latest release details from GitHub API with intelligent fallbacks
  */
@@ -72,39 +80,66 @@ export async function checkForGitHubUpdate(
   repoPath: string = DEFAULT_GITHUB_REPO,
   currentVersion: string = CURRENT_APP_VERSION
 ): Promise<UpdateCheckResult> {
-  const cleanRepo = repoPath
-    .replace(/^https?:\/\/github\.com\//, '')
-    .replace(/\.git$/, '')
-    .replace(/\/$/, '')
-    .trim();
-
-  const releasePageUrl = `https://github.com/${cleanRepo}/releases`;
-  const actionsPageUrl = `https://github.com/${cleanRepo}/actions`;
-  const repoArchiveUrl = `https://github.com/${cleanRepo}/archive/refs/heads/main.zip`;
+  let cleanRepo = cleanRepoPath(repoPath);
 
   if (!cleanRepo || !cleanRepo.includes('/')) {
     return {
       hasUpdate: false,
       currentVersion,
       latestVersion: currentVersion,
-      releasePageUrl,
-      actionsPageUrl,
-      repoArchiveUrl,
-      error: 'Invalid GitHub repository format. Use "username/repository".',
+      releasePageUrl: `https://github.com/${cleanRepo}`,
+      actionsPageUrl: `https://github.com/${cleanRepo}/actions`,
+      repoArchiveUrl: `https://github.com/${cleanRepo}/archive/refs/heads/main.zip`,
+      error: 'Invalid GitHub repository format. Please enter "username/repository" (e.g. herms1982/Harrys-aircon-invoicing).',
     };
   }
+
+  const releasePageUrl = `https://github.com/${cleanRepo}/releases`;
+  const actionsPageUrl = `https://github.com/${cleanRepo}/actions`;
+  const repoArchiveUrl = `https://github.com/${cleanRepo}/archive/refs/heads/main.zip`;
 
   const headers = {
     Accept: 'application/vnd.github.v3+json',
   };
 
-  try {
-    // Stage 1: Try /releases/latest
-    let response = await fetch(`https://api.github.com/repos/${cleanRepo}/releases/latest`, { headers });
+  // Try candidate repo names (e.g. sanitized without trailing hyphens/spaces, and as entered)
+  const candidateRepos = Array.from(new Set([
+    cleanRepo,
+    cleanRepo.replace(/[\-_]+$/, ''),
+    cleanRepo.toLowerCase(),
+    cleanRepo.toLowerCase().replace(/[\-_]+$/, ''),
+  ])).filter(r => r.includes('/'));
 
-    // Stage 2: If 404, try /releases (all releases including pre-releases)
-    if (response.status === 404) {
-      const allReleasesResp = await fetch(`https://api.github.com/repos/${cleanRepo}/releases`, { headers });
+  try {
+    for (const targetRepo of candidateRepos) {
+      // Stage 1: Try /releases/latest
+      const response = await fetch(`https://api.github.com/repos/${targetRepo}/releases/latest`, { headers });
+      if (response.ok) {
+        const release: GitHubReleaseInfo = await response.json();
+        const latestVersion = release.tag_name || release.name || currentVersion;
+        const hasUpdate = compareVersions(latestVersion, currentVersion) > 0 || latestVersion !== currentVersion;
+        const apkAsset = release.assets?.find(
+          (a) => a.name.endsWith('.apk') || a.content_type?.includes('vnd.android.package-archive')
+        );
+        const directApkUrl = apkAsset?.browser_download_url || `https://github.com/${targetRepo}/releases/download/${release.tag_name || 'v1.1.0'}/app-release.apk`;
+
+        return {
+          hasUpdate,
+          currentVersion,
+          latestVersion,
+          releaseTitle: release.name || release.tag_name,
+          releaseNotes: release.body || 'New GitHub Release build available.',
+          publishedAt: release.published_at ? new Date(release.published_at).toLocaleDateString() : undefined,
+          apkDownloadUrl: directApkUrl,
+          releasePageUrl: release.html_url || `https://github.com/${targetRepo}/releases`,
+          actionsPageUrl: `https://github.com/${targetRepo}/actions`,
+          repoArchiveUrl: `https://github.com/${targetRepo}/archive/refs/heads/main.zip`,
+          apkSizeFormatted: apkAsset ? formatBytes(apkAsset.size) : undefined,
+        };
+      }
+
+      // Stage 2: Try all /releases
+      const allReleasesResp = await fetch(`https://api.github.com/repos/${targetRepo}/releases`, { headers });
       if (allReleasesResp.ok) {
         const releasesList = await allReleasesResp.json();
         if (Array.isArray(releasesList) && releasesList.length > 0) {
@@ -122,17 +157,17 @@ export async function checkForGitHubUpdate(
             releaseTitle: latestRel.name || latestRel.tag_name,
             releaseNotes: latestRel.body || 'New GitHub Release build.',
             publishedAt: latestRel.published_at ? new Date(latestRel.published_at).toLocaleDateString() : undefined,
-            apkDownloadUrl: apkAsset?.browser_download_url || `https://github.com/${cleanRepo}/releases/download/${latestVersion}/app-release.apk`,
-            releasePageUrl: latestRel.html_url || releasePageUrl,
-            actionsPageUrl,
-            repoArchiveUrl,
+            apkDownloadUrl: apkAsset?.browser_download_url || `https://github.com/${targetRepo}/releases/download/${latestVersion}/app-release.apk`,
+            releasePageUrl: latestRel.html_url || `https://github.com/${targetRepo}/releases`,
+            actionsPageUrl: `https://github.com/${targetRepo}/actions`,
+            repoArchiveUrl: `https://github.com/${targetRepo}/archive/refs/heads/main.zip`,
             apkSizeFormatted: apkAsset ? formatBytes(apkAsset.size) : undefined,
           };
         }
       }
 
-      // Stage 3: If no releases exist, try /tags
-      const tagsResp = await fetch(`https://api.github.com/repos/${cleanRepo}/tags`, { headers });
+      // Stage 3: Try /tags
+      const tagsResp = await fetch(`https://api.github.com/repos/${targetRepo}/tags`, { headers });
       if (tagsResp.ok) {
         const tags = await tagsResp.json();
         if (Array.isArray(tags) && tags.length > 0) {
@@ -144,88 +179,66 @@ export async function checkForGitHubUpdate(
             latestVersion: latestTag,
             releaseTitle: `Tag ${latestTag}`,
             releaseNotes: `Code tag ${latestTag} found in GitHub repo. Click below to download APK or view build runs.`,
-            apkDownloadUrl: `https://github.com/${cleanRepo}/releases/download/${latestTag}/app-release.apk`,
-            releasePageUrl: `https://github.com/${cleanRepo}/releases/tag/${latestTag}`,
-            actionsPageUrl,
-            repoArchiveUrl,
+            apkDownloadUrl: `https://github.com/${targetRepo}/releases/download/${latestTag}/app-release.apk`,
+            releasePageUrl: `https://github.com/${targetRepo}/releases/tag/${latestTag}`,
+            actionsPageUrl: `https://github.com/${targetRepo}/actions`,
+            repoArchiveUrl: `https://github.com/${targetRepo}/archive/refs/heads/main.zip`,
             isTagFallback: true,
           };
         }
       }
 
-      // Stage 4: Check latest commit on main branch
-      const commitResp = await fetch(`https://api.github.com/repos/${cleanRepo}/commits/main`, { headers });
+      // Stage 4: Check /commits (automatic default branch detection)
+      const commitResp = await fetch(`https://api.github.com/repos/${targetRepo}/commits`, { headers });
       if (commitResp.ok) {
-        const commitData = await commitResp.json();
-        const shortSha = commitData.sha ? commitData.sha.substring(0, 7) : 'head';
-        const commitMsg = commitData.commit?.message?.split('\n')[0] || 'Latest main branch commit';
-        const commitDate = commitData.commit?.committer?.date ? new Date(commitData.commit.committer.date).toLocaleDateString() : undefined;
+        const commits = await commitResp.json();
+        if (Array.isArray(commits) && commits.length > 0) {
+          const latestCommit = commits[0];
+          const shortSha = latestCommit.sha ? latestCommit.sha.substring(0, 7) : 'head';
+          const commitMsg = latestCommit.commit?.message?.split('\n')[0] || 'Latest repository commit';
+          const commitDate = latestCommit.commit?.committer?.date ? new Date(latestCommit.commit.committer.date).toLocaleDateString() : undefined;
 
-        return {
-          hasUpdate: true, // Signal that new code is present on main
-          currentVersion,
-          latestVersion: `main-${shortSha}`,
-          releaseTitle: `Main Branch (${shortSha})`,
-          releaseNotes: `Latest commit on main: "${commitMsg}" (${commitDate}). GitHub Actions generates an updated APK for every commit!`,
-          apkDownloadUrl: actionsPageUrl,
-          releasePageUrl,
-          actionsPageUrl,
-          repoArchiveUrl,
-          isTagFallback: true,
-        };
+          return {
+            hasUpdate: false,
+            currentVersion,
+            latestVersion: `git-${shortSha}`,
+            releaseTitle: `Repository Connected (${shortSha})`,
+            releaseNotes: `Latest commit: "${commitMsg}" (${commitDate}). When you create a Release or Tag on GitHub, the automated APK builder compiles it for you.`,
+            apkDownloadUrl: `https://github.com/${targetRepo}/actions`,
+            releasePageUrl: `https://github.com/${targetRepo}/releases`,
+            actionsPageUrl: `https://github.com/${targetRepo}/actions`,
+            repoArchiveUrl: `https://github.com/${targetRepo}/archive/refs/heads/main.zip`,
+            isTagFallback: true,
+          };
+        }
       }
 
-      return {
-        hasUpdate: false,
-        currentVersion,
-        latestVersion: currentVersion,
-        releasePageUrl,
-        actionsPageUrl,
-        repoArchiveUrl,
-        error: `Connected to repository "${cleanRepo}", but no published GitHub Releases or tags were found yet. Push a commit or create a tag on GitHub to build your first APK!`,
-      };
+      // Stage 5: Check if base repo exists
+      const baseRepoResp = await fetch(`https://api.github.com/repos/${targetRepo}`, { headers });
+      if (baseRepoResp.ok) {
+        const repoData = await baseRepoResp.json();
+        return {
+          hasUpdate: false,
+          currentVersion,
+          latestVersion: currentVersion,
+          releaseTitle: repoData.full_name,
+          releaseNotes: `Repository "${repoData.full_name}" is connected! No APK releases or release tags have been published yet.`,
+          releasePageUrl: `https://github.com/${targetRepo}/releases`,
+          actionsPageUrl: `https://github.com/${targetRepo}/actions`,
+          repoArchiveUrl: `https://github.com/${targetRepo}/archive/refs/heads/main.zip`,
+        };
+      }
     }
 
-    if (response.status === 403 || response.status === 429) {
-      return {
-        hasUpdate: false,
-        currentVersion,
-        latestVersion: currentVersion,
-        releasePageUrl,
-        actionsPageUrl,
-        repoArchiveUrl,
-        error: `GitHub API rate limit reached. You can still download updates directly on GitHub!`,
-      };
-    }
-
-    if (!response.ok) {
-      throw new Error(`GitHub API returned HTTP ${response.status}`);
-    }
-
-    const release: GitHubReleaseInfo = await response.json();
-    const latestVersion = release.tag_name || release.name || currentVersion;
-
-    const hasUpdate = compareVersions(latestVersion, currentVersion) > 0 || latestVersion !== currentVersion;
-
-    // Find APK asset if present
-    const apkAsset = release.assets?.find(
-      (a) => a.name.endsWith('.apk') || a.content_type.includes('vnd.android.package-archive')
-    );
-
-    const directApkUrl = apkAsset?.browser_download_url || `https://github.com/${cleanRepo}/releases/download/${release.tag_name || 'v1.1.0'}/app-release.apk`;
-
+    // If all candidate repos returned 404
     return {
-      hasUpdate,
+      hasUpdate: false,
       currentVersion,
-      latestVersion,
-      releaseTitle: release.name || release.tag_name,
-      releaseNotes: release.body || 'New GitHub Release build available.',
-      publishedAt: release.published_at ? new Date(release.published_at).toLocaleDateString() : undefined,
-      apkDownloadUrl: directApkUrl,
-      releasePageUrl: release.html_url || releasePageUrl,
+      latestVersion: currentVersion,
+      releasePageUrl,
       actionsPageUrl,
       repoArchiveUrl,
-      apkSizeFormatted: apkAsset ? formatBytes(apkAsset.size) : undefined,
+      error: `GitHub returned 404 for repository "${cleanRepo}". If your repository is private or spelled differently, select or enter your repository name below, or open GitHub directly.`,
     };
   } catch (err: any) {
     console.error('Update Check Error:', err);

@@ -233,59 +233,83 @@ Thank you for your business!`;
 
         {/* PRINTABLE INVOICE SHEET */}
         <div className="print-sheet p-6 sm:p-8 bg-white text-slate-900 font-sans space-y-6 overflow-y-auto flex-1 print:p-0">
+          {/* Top Brand Accent Bar */}
+          <div className="h-2 w-full bg-gradient-to-r from-blue-700 via-amber-400 to-sky-500 rounded-full" />
+
           {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start border-b border-slate-200 pb-6 gap-4">
-            <div>
-              <h1 className="text-xl font-extrabold text-slate-950 tracking-tight">
-                {settings.businessName}
-              </h1>
-              <p className="text-xs text-slate-600 mt-1">{settings.address}</p>
-              <p className="text-xs text-slate-600">
-                Phone: {settings.phone} | Email: {settings.email}
-                {settings.website && ` | Web: ${settings.website}`}
-              </p>
-              {settings.taxNumber && (
-                <p className="text-xs text-slate-500 font-mono mt-0.5">
-                  Tax No: {settings.taxNumber}
-                </p>
+          <div className="flex flex-col sm:flex-row justify-between items-start border-b-2 border-blue-100 pb-5 gap-4">
+            <div className="flex items-start gap-3.5">
+              {settings.logoUrl && (
+                <img
+                  src={settings.logoUrl}
+                  alt={settings.businessName}
+                  className="w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-xl border border-amber-300 shadow-sm bg-white p-1 shrink-0"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                  }}
+                />
               )}
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-blue-950 tracking-tight">
+                  {settings.businessName}
+                </h1>
+                {settings.slogan && (
+                  <p className="text-[11px] font-semibold text-blue-700 italic mt-0.5 max-w-md">
+                    "{settings.slogan}"
+                  </p>
+                )}
+                <p className="text-xs text-slate-600 mt-1">{settings.address}</p>
+                <p className="text-xs text-slate-700 font-medium">
+                  Phone: <strong className="text-blue-950">{settings.phone}</strong> | Email: <strong className="text-blue-950">{settings.email}</strong>
+                  {settings.website && ` | Web: ${settings.website}`}
+                </p>
+                {settings.taxNumber && (
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">
+                    Tax / VAT No: {settings.taxNumber}
+                  </p>
+                )}
+              </div>
             </div>
 
-            <div className="sm:text-right">
-              <span className="text-2xl font-black text-slate-900 tracking-widest uppercase block">
-                INVOICE
-              </span>
-              <span className="text-sm font-mono font-bold text-amber-600 block mt-1">
-                #{job.invoiceNumber}
-              </span>
-              <span className="text-xs text-slate-500 block mt-1">
-                Date: <strong className="text-slate-800">{job.date}</strong>
-              </span>
-              <span
-                className={`inline-block text-xs font-bold px-3 py-0.5 rounded-md mt-2 uppercase ${
-                  job.status === 'Paid'
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                    : 'bg-amber-100 text-amber-900 border border-amber-300'
-                }`}
-              >
-                Status: {job.status}
-              </span>
+            <div className="sm:text-right w-full sm:w-auto flex sm:flex-col justify-between sm:justify-start items-end gap-1">
+              <div>
+                <span className="text-2xl sm:text-3xl font-black text-blue-950 tracking-widest uppercase block">
+                  INVOICE
+                </span>
+                <span className="inline-block text-xs font-mono font-extrabold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md mt-1">
+                  #{job.invoiceNumber}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-slate-500 block mt-1">
+                  Date: <strong className="text-slate-800">{job.date}</strong>
+                </span>
+                <span
+                  className={`inline-block text-xs font-bold px-3 py-0.5 rounded-full mt-1.5 uppercase ${
+                    job.status === 'Paid'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-amber-100 text-amber-900 border border-amber-400'
+                  }`}
+                >
+                  Status: {job.status}
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Client Details */}
-          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+          <div className="bg-gradient-to-r from-blue-50/80 to-sky-50/50 border border-blue-200 p-4 rounded-xl shadow-xs">
+            <span className="text-[10px] font-extrabold text-blue-800 uppercase tracking-wider block">
               BILLED TO:
             </span>
-            <div className="text-sm font-bold text-slate-900 mt-0.5">{job.clientName}</div>
-            <div className="text-xs text-slate-600 mt-0.5 flex items-center gap-1">
-              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+            <div className="text-sm font-bold text-blue-950 mt-0.5">{job.clientName}</div>
+            <div className="text-xs text-slate-700 mt-0.5 flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
               <span>{job.clientAddress}</span>
             </div>
             {job.clientPhone && (
-              <div className="text-xs text-slate-600 mt-0.5 flex items-center gap-1">
-                <Phone className="w-3 h-3 text-slate-400 shrink-0" />
+              <div className="text-xs text-slate-700 mt-0.5 flex items-center gap-1">
+                <Phone className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                 <span>{job.clientPhone}</span>
               </div>
             )}
@@ -293,37 +317,37 @@ Thank you for your business!`;
 
           {/* Job description */}
           <div>
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+            <h3 className="text-xs font-bold text-blue-950 uppercase tracking-wider">
               Work Performed: {job.jobTitle}
             </h3>
-            <p className="text-xs text-slate-700 bg-slate-50 border border-slate-200 p-3 rounded-xl mt-1.5 leading-relaxed">
+            <p className="text-xs text-slate-800 bg-blue-50/40 border border-blue-100 p-3 rounded-xl mt-1.5 leading-relaxed">
               {job.workDone || 'Site callout and diagnostic inspection completed.'}
             </p>
           </div>
 
           {/* Itemized Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl border border-blue-200 shadow-xs">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b-2 border-slate-300 bg-slate-100 text-slate-700">
-                  <th className="py-2.5 px-3 font-bold">Service / Item Description</th>
+                <tr className="bg-blue-900 text-white border-b-2 border-amber-400">
+                  <th className="py-2.5 px-3.5 font-bold">Service / Item Description</th>
                   <th className="py-2.5 px-3 text-center font-bold">Qty / Units</th>
                   <th className="py-2.5 px-3 text-right font-bold">Unit Rate</th>
-                  <th className="py-2.5 px-3 text-right font-bold">Amount</th>
+                  <th className="py-2.5 px-3.5 text-right font-bold">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-blue-100 bg-white">
                 {/* Travel */}
                 {job.kmTravelled > 0 && (
-                  <tr>
-                    <td className="py-2.5 px-3 font-medium text-slate-900">
+                  <tr className="hover:bg-blue-50/40 transition-colors">
+                    <td className="py-2.5 px-3.5 font-medium text-slate-900">
                       Site Travelling & Vehicle Fuel ({job.kmTravelled} km round trip)
                     </td>
                     <td className="py-2.5 px-3 text-center text-slate-600">{job.kmTravelled} km</td>
                     <td className="py-2.5 px-3 text-right text-slate-600 font-mono">
                       {formatCurrency(job.clientFuelRatePerKm, settings.currencySymbol)}
                     </td>
-                    <td className="py-2.5 px-3 text-right font-bold font-mono text-slate-900">
+                    <td className="py-2.5 px-3.5 text-right font-bold font-mono text-blue-950">
                       {formatCurrency(job.travelCharge, settings.currencySymbol)}
                     </td>
                   </tr>
@@ -331,15 +355,15 @@ Thank you for your business!`;
 
                 {/* Labor */}
                 {job.hoursOnSite > 0 && (
-                  <tr>
-                    <td className="py-2.5 px-3 font-medium text-slate-900">
+                  <tr className="hover:bg-blue-50/40 transition-colors">
+                    <td className="py-2.5 px-3.5 font-medium text-slate-900">
                       On-Site Technician Labor ({job.hoursOnSite} hours)
                     </td>
                     <td className="py-2.5 px-3 text-center text-slate-600">{job.hoursOnSite} hrs</td>
                     <td className="py-2.5 px-3 text-right text-slate-600 font-mono">
                       {formatCurrency(job.hourlyRateClient, settings.currencySymbol)}
                     </td>
-                    <td className="py-2.5 px-3 text-right font-bold font-mono text-slate-900">
+                    <td className="py-2.5 px-3.5 text-right font-bold font-mono text-blue-950">
                       {formatCurrency(job.laborCharge, settings.currencySymbol)}
                     </td>
                   </tr>
@@ -347,8 +371,8 @@ Thank you for your business!`;
 
                 {/* Stock Items */}
                 {job.stockItems.map((item) => (
-                  <tr key={item.stockItemId}>
-                    <td className="py-2.5 px-3">
+                  <tr key={item.stockItemId} className="hover:bg-blue-50/40 transition-colors">
+                    <td className="py-2.5 px-3.5">
                       <div className="font-semibold text-slate-900">{item.name}</div>
                       <div className="text-[10px] text-slate-500 font-mono">SKU: {item.sku}</div>
                     </td>
@@ -358,7 +382,7 @@ Thank you for your business!`;
                     <td className="py-2.5 px-3 text-right text-slate-600 font-mono">
                       {formatCurrency(item.unitSellPrice, settings.currencySymbol)}
                     </td>
-                    <td className="py-2.5 px-3 text-right font-bold font-mono text-slate-900">
+                    <td className="py-2.5 px-3.5 text-right font-bold font-mono text-blue-950">
                       {formatCurrency(item.quantity * item.unitSellPrice, settings.currencySymbol)}
                     </td>
                   </tr>
@@ -366,13 +390,13 @@ Thank you for your business!`;
 
                 {/* Misc Expenses */}
                 {job.miscExpenses.map((m) => (
-                  <tr key={m.id}>
-                    <td className="py-2.5 px-3 font-medium text-slate-900">{m.description}</td>
+                  <tr key={m.id} className="hover:bg-blue-50/40 transition-colors">
+                    <td className="py-2.5 px-3.5 font-medium text-slate-900">{m.description}</td>
                     <td className="py-2.5 px-3 text-center text-slate-600">1</td>
                     <td className="py-2.5 px-3 text-right text-slate-600 font-mono">
                       {formatCurrency(m.chargeAmount, settings.currencySymbol)}
                     </td>
-                    <td className="py-2.5 px-3 text-right font-bold font-mono text-slate-900">
+                    <td className="py-2.5 px-3.5 text-right font-bold font-mono text-blue-950">
                       {formatCurrency(m.chargeAmount, settings.currencySymbol)}
                     </td>
                   </tr>
@@ -382,69 +406,79 @@ Thank you for your business!`;
           </div>
 
           {/* Totals Section */}
-          <div className="flex flex-col sm:flex-row justify-between items-start pt-4 border-t border-slate-300 gap-4">
-            <div className="text-xs text-slate-500 max-w-xs space-y-1">
-              <p className="font-semibold text-slate-700">Payment Terms & Notes:</p>
+          <div className="flex flex-col sm:flex-row justify-between items-start pt-4 border-t-2 border-blue-100 gap-4">
+            <div className="text-xs text-slate-600 max-w-xs space-y-1">
+              <p className="font-bold text-blue-950">Payment Terms & Notes:</p>
               <p>Payment due within 15 days of invoice date.</p>
-              <p>Thank you for choosing {settings.businessName}!</p>
+              <p className="text-blue-800 font-medium">Thank you for choosing {settings.businessName}!</p>
             </div>
 
-            <div className="w-full sm:w-64 space-y-1.5 text-xs font-mono">
-              <div className="flex justify-between text-slate-600">
+            <div className="w-full sm:w-72 space-y-2 text-xs">
+              <div className="flex justify-between text-slate-600 font-mono px-2">
                 <span>Subtotal:</span>
                 <span>{formatCurrency(job.subtotal, settings.currencySymbol)}</span>
               </div>
 
               {job.discountAmount > 0 && (
-                <div className="flex justify-between text-amber-700 font-semibold">
+                <div className="flex justify-between text-amber-700 font-semibold font-mono px-2">
                   <span>Discount:</span>
                   <span>-{formatCurrency(job.discountAmount, settings.currencySymbol)}</span>
                 </div>
               )}
 
               {job.taxRate > 0 && (
-                <div className="flex justify-between text-slate-600">
+                <div className="flex justify-between text-slate-600 font-mono px-2">
                   <span>Tax / VAT ({job.taxRate}%):</span>
                   <span>{formatCurrency(job.taxTotal, settings.currencySymbol)}</span>
                 </div>
               )}
 
-              <div className="flex justify-between text-base font-extrabold text-slate-950 pt-2 border-t-2 border-slate-900">
-                <span>TOTAL DUE:</span>
-                <span>{formatCurrency(job.totalInvoicePrice, settings.currencySymbol)}</span>
+              {/* Total Due Banner in Royal Blue & Yellow */}
+              <div className="flex justify-between items-center bg-blue-950 text-white p-3 rounded-xl border-2 border-amber-400 shadow-md">
+                <span className="font-black tracking-wide text-xs text-amber-300">TOTAL DUE:</span>
+                <span className="font-black text-base font-mono text-amber-400">
+                  {formatCurrency(job.totalInvoicePrice, settings.currencySymbol)}
+                </span>
               </div>
             </div>
           </div>
 
           {/* Banking & Payment Details Box */}
-          <div className="bg-slate-50 border-2 border-slate-300 rounded-xl p-4 text-xs">
-            <div className="flex items-center gap-2 border-b border-slate-200 pb-2 mb-2">
-              <Landmark className="w-4 h-4 text-amber-600" />
-              <span className="font-bold text-slate-900 tracking-wide uppercase">
-                Banking & EFT Payment Details
+          <div className="bg-amber-50/70 border-2 border-amber-400/80 rounded-2xl p-4.5 text-xs shadow-xs">
+            <div className="flex items-center justify-between border-b border-amber-200/80 pb-2 mb-3">
+              <div className="flex items-center gap-2">
+                <Landmark className="w-4 h-4 text-blue-900" />
+                <span className="font-extrabold text-blue-950 tracking-wide uppercase text-xs">
+                  Banking & EFT Payment Details
+                </span>
+              </div>
+              <span className="text-[10px] font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full uppercase">
+                Official EFT Details
               </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-700">
               <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Account Name:</span>
-                <strong className="text-slate-900">{settings.accountName || 'Harrys aircon and Electrical'}</strong>
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Account Name:</span>
+                <strong className="text-blue-950 text-sm">{settings.accountName || 'Harrys aircon and Electrical'}</strong>
               </div>
               <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Account Number:</span>
-                <strong className="text-slate-950 font-mono text-sm tracking-wider">{settings.accountNumber || '53002734919'}</strong>
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Account Number:</span>
+                <span className="bg-amber-200/70 border border-amber-300 text-blue-950 font-mono font-black text-sm px-2.5 py-0.5 rounded inline-block">
+                  {settings.accountNumber || '53002734919'}
+                </span>
               </div>
               <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Account Type:</span>
-                <span>{settings.accountType || 'Current Business'}</span>
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Account Type:</span>
+                <span className="text-slate-900 font-semibold">{settings.accountType || 'Current Business'}</span>
               </div>
               <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Bank / Branch:</span>
-                <span>{settings.bankName || 'First National Bank'} ({settings.branchCode || '250655'})</span>
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Bank & Branch Code:</span>
+                <span className="text-slate-900 font-semibold">{settings.bankName || 'First National Bank'} ({settings.branchCode || '250655'})</span>
               </div>
             </div>
-            <div className="mt-2 pt-2 border-t border-slate-200 text-[11px] text-slate-600 flex items-center justify-between">
-              <span>Please use reference: <strong className="text-amber-700 font-mono font-bold">{job.invoiceNumber}</strong></span>
-              <span className="text-[10px] text-slate-500">Proof of payment: {settings.email}</span>
+            <div className="mt-3 pt-2.5 border-t border-amber-200/80 text-[11px] text-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
+              <span>Please use invoice reference: <strong className="text-blue-900 font-mono font-black bg-blue-100 px-2 py-0.5 rounded text-xs">#{job.invoiceNumber}</strong></span>
+              <span className="text-[10px] text-slate-600 font-medium">Proof of payment: <strong className="text-slate-800">{settings.email}</strong></span>
             </div>
           </div>
         </div>

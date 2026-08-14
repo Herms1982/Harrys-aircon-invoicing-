@@ -128,4 +128,6 @@ export interface BusinessSettings {
   branchCode?: string;
   githubRepo?: string;
   appVersion?: string;
+  slogan?: string;
+  logoUrl?: string;
 }

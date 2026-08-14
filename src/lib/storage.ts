@@ -102,8 +102,16 @@ export function getStoredSettings(): BusinessSettings {
         settings.phone = INITIAL_SETTINGS.phone;
         updated = true;
       }
-      if (!settings.githubRepo || settings.githubRepo === 'herms1982/harrys-aircon-app') {
+      if (!settings.githubRepo || settings.githubRepo === 'herms1982/harrys-aircon-app' || settings.githubRepo.endsWith('-')) {
         settings.githubRepo = INITIAL_SETTINGS.githubRepo;
+        updated = true;
+      }
+      if (!settings.slogan) {
+        settings.slogan = INITIAL_SETTINGS.slogan;
+        updated = true;
+      }
+      if (!settings.logoUrl) {
+        settings.logoUrl = INITIAL_SETTINGS.logoUrl;
         updated = true;
       }
       if (!settings.accountNumber || settings.accountNumber === '' || !settings.accountName || !settings.accountType) {

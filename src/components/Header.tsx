@@ -36,15 +36,26 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
         {/* Brand & Active Screen */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-xs text-white shadow-lg shadow-indigo-600/30 border border-indigo-400/30">
-            <Wrench className="w-4 h-4 stroke-[2.5]" />
-          </div>
-          <div>
-            <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-2">
-              <span>{settings.businessName}</span>
+          {settings.logoUrl ? (
+            <img
+              src={settings.logoUrl}
+              alt={settings.businessName}
+              className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-xl bg-white p-0.5 border border-amber-400/80 shadow-md shrink-0"
+              onError={(e) => {
+                (e.currentTarget as HTMLElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center font-black text-xs text-white shadow-lg shadow-blue-600/30 border border-amber-400/40 shrink-0">
+              <Wrench className="w-4 h-4 stroke-[2.5] text-amber-300" />
+            </div>
+          )}
+          <div className="min-w-0">
+            <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5 truncate">
+              <span className="truncate">{settings.businessName}</span>
             </h1>
-            <p className="text-[11px] text-indigo-400 font-medium flex items-center gap-1">
-              <span>{tabTitles[activeTab] || 'Job & Stock Manager'}</span>
+            <p className="text-[10px] sm:text-[11px] text-amber-300/90 font-medium truncate max-w-[200px] sm:max-w-md">
+              {settings.slogan ? settings.slogan : tabTitles[activeTab] || 'Job & Stock Manager'}
             </p>
           </div>
         </div>
