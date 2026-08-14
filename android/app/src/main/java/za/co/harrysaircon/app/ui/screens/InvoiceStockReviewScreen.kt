@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DocumentScanner
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,6 +47,15 @@ fun InvoiceStockReviewScreen(
             if (gmsResult != null) {
                 viewModel.onDocumentScanned(context, gmsResult)
             }
+        }
+    }
+
+    // Activity Result Launcher for Gallery / Photos Picker
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.processImageUri(context, uri)
         }
     }
 
@@ -89,11 +99,13 @@ fun InvoiceStockReviewScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Capture receipts with ML Kit Document Scanner and auto-sync to local inventory with Gemini AI.",
+                            "Capture receipts with ML Kit Document Scanner or select an invoice photo from your gallery to auto-restock inventory with Gemini AI.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(28.dp))
+
+                        // Scan with Document Scanner Button
                         Button(
                             onClick = {
                                 val scanner = viewModel.createDocumentScanner(context)
@@ -105,11 +117,28 @@ fun InvoiceStockReviewScreen(
                                     }
                             },
                             shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.height(52.dp)
+                            modifier = Modifier
+                                .fillMaxWidth(0.85f)
+                                .height(52.dp)
                         ) {
                             Icon(Icons.Default.DocumentScanner, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Scan Invoice / Receipt", fontWeight = FontWeight.Bold)
+                            Text("Capture with Camera", fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Choose from Gallery Button
+                        OutlinedButton(
+                            onClick = { galleryLauncher.launch("image/*") },
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth(0.85f)
+                                .height(52.dp)
+                        ) {
+                            Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Choose from Gallery", fontWeight = FontWeight.Bold)
                         }
                     }
                 }

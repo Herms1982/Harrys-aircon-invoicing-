@@ -1,8 +1,10 @@
 package za.co.harrysaircon.app.ui.viewmodel
 
 import android.content.Context
-import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import android.net.Uri
+import android.util.Log
+import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanner
@@ -11,6 +13,7 @@ import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
 import za.co.harrysaircon.app.data.repository.ReconciledReviewItem
 import za.co.harrysaircon.app.data.repository.StockSyncRepository
+import za.co.harrysaircon.app.domain.scanner.ImageUtils
 import za.co.harrysaircon.app.domain.scanner.InvoiceScannerService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,7 +62,9 @@ class InvoiceToStockSyncViewModel(
     fun onDocumentScanned(context: Context, scanResult: GmsDocumentScanningResult) {
         val pages = scanResult.pages
         if (pages.isNullOrEmpty()) {
-            _uiState.value = ScanUiState.Error("No invoice pages captured.")
+            val errorMsg = "No invoice pages captured."
+            _uiState.value = ScanUiState.Error(errorMsg)
+            Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -67,33 +72,61 @@ class InvoiceToStockSyncViewModel(
         processImageUri(context, imageUri)
     }
 
+    /**
+     * Converts any photo URI (from Camera capture, Document Scanner, or Gallery)
+     * into a downscaled, EXIF-corrected Bitmap, then sends it to Gemini.
+     */
     fun processImageUri(context: Context, uri: Uri) {
         viewModelScope.launch {
             _uiState.value = ScanUiState.ScanningWithGemini
             try {
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
+                Log.d(TAG, "Decoding and downscaling image from URI: $uri")
+                
+                // Downscale image to max 1024px to fit within memory and Gemini payload limits
+                val bitmap: Bitmap? = ImageUtils.decodeAndScaleBitmapFromUri(
+                    context = context,
+                    uri = uri,
+                    maxDimension = 1024
+                )
 
                 if (bitmap == null) {
-                    _uiState.value = ScanUiState.Error("Could not decode scanned image.")
+                    val errorMsg = "Failed to load photo. Please ensure clear lighting and try again."
+                    _uiState.value = ScanUiState.Error(errorMsg)
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
                     return@launch
                 }
 
-                val parseResult = scannerService.parseInvoiceImage(bitmap)
-                parseResult.onSuccess { invoiceDto ->
-                    val reconciledItems = repository.correlateScannedItems(invoiceDto)
-                    _uiState.value = ScanUiState.Review(
-                        supplierName = invoiceDto.supplierName,
-                        invoiceDate = invoiceDto.invoiceDate,
-                        invoiceNumber = invoiceDto.invoiceNumber,
-                        items = reconciledItems
-                    )
-                }.onFailure { error ->
-                    _uiState.value = ScanUiState.Error(error.localizedMessage ?: "Gemini invoice scan failed.")
-                }
+                processBitmap(context, bitmap)
             } catch (e: Exception) {
-                _uiState.value = ScanUiState.Error(e.localizedMessage ?: "Unknown scanning error.")
+                Log.e(TAG, "Error processing image URI", e)
+                val userMsg = "Failed to scan photo. Please ensure clear lighting and try again."
+                _uiState.value = ScanUiState.Error(userMsg)
+                Toast.makeText(context, userMsg, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /**
+     * Direct Bitmap ingestion (e.g. from camera callback or byte buffer)
+     */
+    fun processBitmap(context: Context, bitmap: Bitmap) {
+        viewModelScope.launch {
+            _uiState.value = ScanUiState.ScanningWithGemini
+            val parseResult = scannerService.parseInvoiceImage(bitmap)
+            
+            parseResult.onSuccess { invoiceDto ->
+                val reconciledItems = repository.correlateScannedItems(invoiceDto)
+                _uiState.value = ScanUiState.Review(
+                    supplierName = invoiceDto.supplierName,
+                    invoiceDate = invoiceDto.invoiceDate,
+                    invoiceNumber = invoiceDto.invoiceNumber,
+                    items = reconciledItems
+                )
+            }.onFailure { error ->
+                val errorMessage = error.message ?: "Failed to scan photo. Please ensure clear lighting and try again."
+                Log.e(TAG, "Gemini scan failed: $errorMessage", error)
+                _uiState.value = ScanUiState.Error(errorMessage)
+                Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -140,5 +173,9 @@ class InvoiceToStockSyncViewModel(
 
     fun resetState() {
         _uiState.value = ScanUiState.Idle
+    }
+
+    companion object {
+        private const val TAG = "InvoiceScanViewModel"
     }
 }
