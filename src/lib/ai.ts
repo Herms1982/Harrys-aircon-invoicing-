@@ -65,12 +65,19 @@ export async function generateAICustomerMessage(
   type: 'quote_send' | 'invoice_ready' | 'payment_reminder' | 'service_completion' | 'seasonal_maintenance',
   job?: CalloutJob | null,
   client?: Client | null,
-  businessName?: string
+  businessName?: string,
+  bankingDetails?: {
+    accountName?: string;
+    accountNumber?: string;
+    accountType?: string;
+    bankName?: string;
+    branchCode?: string;
+  }
 ): Promise<string> {
   const res = await fetch('/api/ai/generate-message', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type, job, client, businessName }),
+    body: JSON.stringify({ type, job, client, businessName, bankingDetails }),
   });
 
   if (!res.ok) {

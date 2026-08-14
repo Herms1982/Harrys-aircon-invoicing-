@@ -144,8 +144,16 @@ Rules:
   // API Route: AI Customer Communication & Payment Reminder Generator
   app.post('/api/ai/generate-message', async (req, res) => {
     try {
-      const { type, job, client, businessName } = req.body;
+      const { type, job, client, businessName, bankingDetails } = req.body;
       const ai = getAi();
+
+      const bankInfo = bankingDetails || {
+        accountName: 'Harrys aircon and Electrical',
+        accountNumber: '53002734919',
+        accountType: 'Current Business',
+        bankName: 'First National Bank (FNB)',
+        branchCode: '250655',
+      };
 
       const prompt = `You are a courteous customer communication manager for ${businessName || "Harry's Aircon Electrical and Solar services"}.
 Generate a professional, polite message for message purpose "${type}" (e.g. quote_send, invoice_ready, payment_reminder, service_completion, seasonal_maintenance).
@@ -158,9 +166,17 @@ Callout Job Context:
 - Status: ${job?.status || 'Draft'}
 - Due Date: ${job?.dueDate || 'On Receipt'}
 
+Banking Details for EFT:
+- Account Name: ${bankInfo.accountName}
+- Account Number: ${bankInfo.accountNumber}
+- Account Type: ${bankInfo.accountType}
+- Bank: ${bankInfo.bankName} (Branch: ${bankInfo.branchCode})
+- Reference: ${job?.invoiceNumber || 'Invoice #'}
+
 Format requirements:
 - Warm, polite tone suitable for WhatsApp or Email.
-- Highlight invoice total in South African Rand (R).
+- Highlight invoice/quote total in South African Rand (R).
+- If type is invoice_ready, quote_send, or payment_reminder, clearly include the EFT banking details for payment.
 - Keep it concise, ready to copy and send to the customer.
 `;
 

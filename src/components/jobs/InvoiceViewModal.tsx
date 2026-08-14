@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Printer, CheckCircle2, TrendingUp, ChevronDown, ChevronUp, Copy, Check, MapPin, Phone, Mail, Share2, Sparkles, FileDown, RefreshCw, ExternalLink, Download, Eye, Send } from 'lucide-react';
+import { X, Printer, CheckCircle2, TrendingUp, ChevronDown, ChevronUp, Copy, Check, MapPin, Phone, Mail, Share2, Sparkles, FileDown, RefreshCw, ExternalLink, Download, Eye, Send, Landmark } from 'lucide-react';
 import { CalloutJob, BusinessSettings, JobStatus } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
 import { downloadInvoicePDF, shareInvoicePDF, PDFSaveResult } from '../../lib/exportUtils';
@@ -413,6 +413,38 @@ Thank you for your business!`;
                 <span>TOTAL DUE:</span>
                 <span>{formatCurrency(job.totalInvoicePrice, settings.currencySymbol)}</span>
               </div>
+            </div>
+          </div>
+
+          {/* Banking & Payment Details Box */}
+          <div className="bg-slate-50 border-2 border-slate-300 rounded-xl p-4 text-xs">
+            <div className="flex items-center gap-2 border-b border-slate-200 pb-2 mb-2">
+              <Landmark className="w-4 h-4 text-amber-600" />
+              <span className="font-bold text-slate-900 tracking-wide uppercase">
+                Banking & EFT Payment Details
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700">
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Account Name:</span>
+                <strong className="text-slate-900">{settings.accountName || 'Harrys aircon and Electrical'}</strong>
+              </div>
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Account Number:</span>
+                <strong className="text-slate-950 font-mono text-sm tracking-wider">{settings.accountNumber || '53002734919'}</strong>
+              </div>
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Account Type:</span>
+                <span>{settings.accountType || 'Current Business'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Bank / Branch:</span>
+                <span>{settings.bankName || 'First National Bank'} ({settings.branchCode || '250655'})</span>
+              </div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-slate-200 text-[11px] text-slate-600 flex items-center justify-between">
+              <span>Please use reference: <strong className="text-amber-700 font-mono font-bold">{job.invoiceNumber}</strong></span>
+              <span className="text-[10px] text-slate-500">Proof of payment: {settings.email}</span>
             </div>
           </div>
         </div>

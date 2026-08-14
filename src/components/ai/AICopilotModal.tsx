@@ -86,7 +86,19 @@ export const AICopilotModal: React.FC<AICopilotModalProps> = ({
     try {
       const selectedJob = jobs.find((j) => j.id === selectedJobId) || null;
       const selectedClient = clients.find((c) => c.id === selectedJob?.clientId) || null;
-      const msg = await generateAICustomerMessage(messageType, selectedJob, selectedClient, settings.businessName);
+      const msg = await generateAICustomerMessage(
+        messageType,
+        selectedJob,
+        selectedClient,
+        settings.businessName,
+        {
+          accountName: settings.accountName || 'Harrys aircon and Electrical',
+          accountNumber: settings.accountNumber || '53002734919',
+          accountType: settings.accountType || 'Current Business',
+          bankName: settings.bankName || 'First National Bank (FNB)',
+          branchCode: settings.branchCode || '250655',
+        }
+      );
       setGeneratedMessage(msg);
     } catch (err: any) {
       setMessageError(err.message || 'Failed to generate message');

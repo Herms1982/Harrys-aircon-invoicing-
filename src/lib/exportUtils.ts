@@ -301,32 +301,61 @@ export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings):
   doc.text(formatCurrency(totals.totalInvoicePrice, settings.currencySymbol), 192, totalY + 30, { align: 'right' });
 
   // 5. Banking Details / Footer
-  let footerY = totalY + 44;
-  if (footerY > 260) {
+  let footerY = totalY + 42;
+  if (footerY > 245) {
     doc.addPage();
     footerY = 20;
   }
 
-  doc.setDrawColor(226, 232, 240);
-  doc.line(14, footerY, 196, footerY);
+  // Draw Banking Details Card Box
+  doc.setDrawColor(203, 213, 225); // slate-300
+  doc.setFillColor(248, 250, 252); // slate-50
+  doc.roundedRect(14, footerY, 182, 34, 2, 2, 'FD');
 
-  footerY += 6;
-  doc.setFontSize(8.5);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text('PAYMENT & BANKING DETAILS:', 14, footerY);
+  doc.text('BANKING & EFT PAYMENT DETAILS:', 18, footerY + 6);
 
-  footerY += 5;
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(71, 85, 105);
-  doc.text(`Business: ${settings.businessName || "Harry's Aircon"}`, 14, footerY);
-  doc.text(`Contact: ${settings.phone || 'N/A'} | Email: ${settings.email || 'N/A'}`, 14, footerY + 4);
-  doc.text(`Payment Reference: ${job.invoiceNumber}`, 14, footerY + 8);
+  doc.setTextColor(51, 65, 85);
+  
+  // Left column
+  doc.text(`Account Name:`, 18, footerY + 12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${settings.accountName || 'Harrys aircon and Electrical'}`, 48, footerY + 12);
 
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(148, 163, 184);
-  doc.text("Thank you for choosing Harry's Aircon Electrical & Solar services!", 105, footerY + 18, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Account No:`, 18, footerY + 17);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(180, 83, 9); // amber-700
+  doc.text(`${settings.accountNumber || '53002734919'}`, 48, footerY + 17);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  doc.text(`Account Type:`, 18, footerY + 22);
+  doc.text(`${settings.accountType || 'Current Business'}`, 48, footerY + 22);
+
+  // Right column
+  doc.text(`Bank:`, 115, footerY + 12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${settings.bankName || 'First National Bank (FNB)'}`, 138, footerY + 12);
+
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Branch Code:`, 115, footerY + 17);
+  doc.text(`${settings.branchCode || '250655'}`, 138, footerY + 17);
+
+  doc.text(`Reference:`, 115, footerY + 22);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(67, 56, 202); // indigo-700
+  doc.text(`${job.invoiceNumber}`, 138, footerY + 22);
+
+  // Bottom note in card
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Please send proof of payment to ${settings.email || 'service@harrysaircon.co.za'}. Thank you for your business!`, 18, footerY + 29);
 
   const filename = `Invoice_${job.invoiceNumber.replace(/[^a-zA-Z0-9_-]/g, '')}.pdf`;
   const title = `Invoice ${job.invoiceNumber}`;
@@ -354,7 +383,18 @@ export async function shareInvoicePDF(job: CalloutJob, settings: BusinessSetting
   const { doc, filename } = buildInvoicePDFDoc(job, settings);
   const pdfBlob = doc.output('blob');
   const title = `Invoice ${job.invoiceNumber} - ${settings.businessName}`;
-  const shareText = `Hi ${job.clientName || 'Valued Client'},\n\nPlease find attached your Invoice ${job.invoiceNumber} for ${formatCurrency(job.totalInvoicePrice, settings.currencySymbol)} from ${settings.businessName}.\n\nThank you for your business!`;
+  const shareText = `Hi ${job.clientName || 'Valued Client'},
+
+Please find attached your Invoice ${job.invoiceNumber} for ${formatCurrency(job.totalInvoicePrice, settings.currencySymbol)} from ${settings.businessName}.
+
+*Banking Details for EFT:*
+• Account Name: ${settings.accountName || 'Harrys aircon and Electrical'}
+• Account Number: ${settings.accountNumber || '53002734919'}
+• Account Type: ${settings.accountType || 'Current Business'}
+• Bank: ${settings.bankName || 'First National Bank'} (${settings.branchCode || '250655'})
+• Payment Reference: ${job.invoiceNumber}
+
+Thank you for your business!`;
 
   // 1. Capacitor Native Share
   if (Capacitor.isNativePlatform()) {

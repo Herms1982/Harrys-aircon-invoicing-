@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Save, RefreshCw, Check, Building, Fuel, Clock, DollarSign, Trash2, ShieldCheck, Github, Sparkles, Download } from 'lucide-react';
+import { Settings, Save, RefreshCw, Check, Building, Fuel, Clock, DollarSign, Trash2, ShieldCheck, Github, Sparkles, Download, Landmark, CreditCard } from 'lucide-react';
 import { BusinessSettings } from '../../types';
 import { DEFAULT_GITHUB_REPO, CURRENT_APP_VERSION } from '../../lib/updater';
 
@@ -29,6 +29,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [taxNumber, setTaxNumber] = useState(settings.taxNumber || '');
   const [currencySymbol, setCurrencySymbol] = useState(settings.currencySymbol);
 
+  // Banking Details
+  const [bankName, setBankName] = useState(settings.bankName || 'First National Bank (FNB)');
+  const [accountType, setAccountType] = useState(settings.accountType || 'Current Business');
+  const [accountName, setAccountName] = useState(settings.accountName || 'Harrys aircon and Electrical');
+  const [accountNumber, setAccountNumber] = useState(settings.accountNumber || '53002734919');
+  const [branchCode, setBranchCode] = useState(settings.branchCode || '250655');
+
   const [defaultFuelCostPerKm, setDefaultFuelCostPerKm] = useState(settings.defaultFuelCostPerKm);
   const [defaultClientFuelRatePerKm, setDefaultClientFuelRatePerKm] = useState(settings.defaultClientFuelRatePerKm);
   const [defaultHourlyRateClient, setDefaultHourlyRateClient] = useState(settings.defaultHourlyRateClient);
@@ -51,6 +58,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       address,
       taxNumber,
       currencySymbol,
+      bankName,
+      accountType,
+      accountName,
+      accountNumber,
+      branchCode,
       defaultFuelCostPerKm,
       defaultClientFuelRatePerKm,
       defaultHourlyRateClient,
@@ -204,6 +216,81 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onChange={(e) => setAddress(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700 text-white rounded-lg p-2.5"
             />
+          </div>
+        </div>
+
+        {/* Banking & Payment Details */}
+        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Landmark className="w-4 h-4 text-amber-400" />
+              <span>Banking Details (Printed on Invoices & Quotes)</span>
+            </h3>
+            <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30">
+              EFT Payments
+            </span>
+          </div>
+          <p className="text-slate-400 text-[11px]">
+            These banking credentials appear on customer invoices, PDF exports, and payment quote notices.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-slate-400 font-medium mb-1">Account Name</label>
+              <input
+                type="text"
+                value={accountName}
+                onChange={(e) => setAccountName(e.target.value)}
+                placeholder="e.g. Harrys aircon and Electrical"
+                className="w-full bg-slate-950 border border-slate-700 text-white font-semibold rounded-lg p-2.5"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 font-medium mb-1">Account Number</label>
+              <input
+                type="text"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                placeholder="e.g. 53002734919"
+                className="w-full bg-slate-950 border border-slate-700 text-amber-400 font-mono font-bold rounded-lg p-2.5 text-sm"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-slate-400 font-medium mb-1">Account Type</label>
+              <input
+                type="text"
+                value={accountType}
+                onChange={(e) => setAccountType(e.target.value)}
+                placeholder="e.g. Current Business / Cheque"
+                className="w-full bg-slate-950 border border-slate-700 text-white font-semibold rounded-lg p-2.5"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 font-medium mb-1">Bank Name</label>
+              <input
+                type="text"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                placeholder="e.g. First National Bank (FNB)"
+                className="w-full bg-slate-950 border border-slate-700 text-white rounded-lg p-2.5"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-400 font-medium mb-1">Branch / Universal Code</label>
+              <input
+                type="text"
+                value={branchCode}
+                onChange={(e) => setBranchCode(e.target.value)}
+                placeholder="e.g. 250655"
+                className="w-full bg-slate-950 border border-slate-700 text-slate-300 font-mono rounded-lg p-2.5"
+              />
+            </div>
           </div>
         </div>
 

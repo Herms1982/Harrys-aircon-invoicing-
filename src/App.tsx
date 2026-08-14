@@ -36,7 +36,7 @@ import { ShieldCheck } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('jobs');
-  const [isMobileDeviceFrame, setIsMobileDeviceFrame] = useState<boolean>(true);
+  const [isMobileDeviceFrame, setIsMobileDeviceFrame] = useState<boolean>(false);
 
   // Core domain states
   const [stock, setStock] = useState<StockItem[]>(() => getStoredStock());

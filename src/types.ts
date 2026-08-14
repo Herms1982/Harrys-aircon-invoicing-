@@ -121,6 +121,11 @@ export interface BusinessSettings {
   defaultHourlyCostInternal: number;
   defaultTaxRate: number;
   nextInvoiceNumber: number;
+  bankName?: string;
+  accountType?: string;
+  accountName?: string;
+  accountNumber?: string;
+  branchCode?: string;
   githubRepo?: string;
   appVersion?: string;
 }

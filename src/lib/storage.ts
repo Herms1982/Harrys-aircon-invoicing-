@@ -106,6 +106,14 @@ export function getStoredSettings(): BusinessSettings {
         settings.githubRepo = INITIAL_SETTINGS.githubRepo;
         updated = true;
       }
+      if (!settings.accountNumber || settings.accountNumber === '' || !settings.accountName || !settings.accountType) {
+        settings.accountType = settings.accountType || INITIAL_SETTINGS.accountType;
+        settings.accountName = settings.accountName || INITIAL_SETTINGS.accountName;
+        settings.accountNumber = settings.accountNumber || INITIAL_SETTINGS.accountNumber;
+        settings.bankName = settings.bankName || INITIAL_SETTINGS.bankName;
+        settings.branchCode = settings.branchCode || INITIAL_SETTINGS.branchCode;
+        updated = true;
+      }
       if (updated) {
         saveStoredSettings(settings);
       }

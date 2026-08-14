@@ -16,6 +16,11 @@ export const INITIAL_SETTINGS: BusinessSettings = {
   defaultHourlyCostInternal: 250.0,
   defaultTaxRate: 15.0, // 15% VAT in South Africa
   nextInvoiceNumber: 1001,
+  bankName: 'First National Bank (FNB)',
+  accountType: 'Current Business',
+  accountName: 'Harrys aircon and Electrical',
+  accountNumber: '53002734919',
+  branchCode: '250655',
   githubRepo: 'herms1982/Harrys-aircon-invoicing-',
   appVersion: '1.1.0',
 };
