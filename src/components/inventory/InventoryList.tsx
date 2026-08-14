@@ -1,5 +1,25 @@
 import React, { useState } from 'react';
-import { Plus, Search, ShieldAlert, Package, TrendingUp, RefreshCw, History, Edit, Trash2, ArrowUpRight, AlertTriangle, Boxes, FileSpreadsheet, FileDown, Printer, Share2, Check } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  ShieldAlert,
+  Package,
+  TrendingUp,
+  RefreshCw,
+  History,
+  Edit,
+  Trash2,
+  ArrowUpRight,
+  AlertTriangle,
+  Boxes,
+  FileSpreadsheet,
+  FileDown,
+  Printer,
+  Share2,
+  Check,
+  Camera,
+  Sparkles,
+} from 'lucide-react';
 import { StockItem, BusinessSettings } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
 import { exportStockToExcel, downloadStockPDF, shareStockListText } from '../../lib/exportUtils';
@@ -13,6 +33,7 @@ interface InventoryListProps {
   onAdjustStockQty: (itemId: string, changeQty: number, reason: string) => void;
   onOpenLogs: () => void;
   onPopulateCatalog?: () => void;
+  onScanInvoice?: () => void;
 }
 
 export const InventoryList: React.FC<InventoryListProps> = ({
@@ -24,6 +45,7 @@ export const InventoryList: React.FC<InventoryListProps> = ({
   onAdjustStockQty,
   onOpenLogs,
   onPopulateCatalog,
+  onScanInvoice,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -130,6 +152,20 @@ export const InventoryList: React.FC<InventoryListProps> = ({
             <span>Audit Log</span>
           </button>
 
+          {onScanInvoice && (
+            <button
+              onClick={onScanInvoice}
+              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-4 py-2 rounded-2xl text-xs shadow-lg shadow-amber-500/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-amber-400/50"
+              title="Scan supplier tax invoice or slip to auto-match and restock inventory items"
+            >
+              <Camera className="w-4 h-4 stroke-[2.5]" />
+              <span>Scan Invoice</span>
+              <span className="text-[9px] bg-slate-950/80 text-amber-300 px-1.5 py-0.2 rounded-full font-mono ml-0.5">
+                AI
+              </span>
+            </button>
+          )}
+
           {onPopulateCatalog && (
             <button
               onClick={onPopulateCatalog}
@@ -137,7 +173,7 @@ export const InventoryList: React.FC<InventoryListProps> = ({
               title="Load full 58 single-phase domestic electrical stock items catalog"
             >
               <Boxes className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Load Domestic Catalog</span>
+              <span>Load Catalog</span>
             </button>
           )}
 
@@ -243,6 +279,15 @@ export const InventoryList: React.FC<InventoryListProps> = ({
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            {onScanInvoice && (
+              <button
+                onClick={onScanInvoice}
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-5 py-2.5 rounded-2xl text-xs shadow-lg shadow-amber-500/20 inline-flex items-center gap-1.5 transition-all cursor-pointer border border-amber-400/50"
+              >
+                <Camera className="w-4 h-4 stroke-[2.5]" />
+                <span>Scan Supplier Invoice Slip (AI)</span>
+              </button>
+            )}
             {onPopulateCatalog && (
               <button
                 onClick={onPopulateCatalog}

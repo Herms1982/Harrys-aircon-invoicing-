@@ -46,7 +46,7 @@ Provide a concise, practical JSON diagnosis and guidance:
 `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.7-flash',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
@@ -100,7 +100,7 @@ Rules:
 `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.7-flash',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
@@ -138,6 +138,133 @@ Rules:
     } catch (err: any) {
       console.error('Gemini Parse Note Error:', err);
       res.status(500).json({ error: err.message || 'Failed to parse notes with AI.' });
+    }
+  });
+
+  // API Route: Scan Purchase Invoice / Supplier Slip for Inventory Restock & Stock Addition
+  app.post('/api/ai/scan-purchase-invoice', async (req, res) => {
+    try {
+      const { imageBase64, mimeType = 'image/jpeg', catalog = [] } = req.body;
+      const ai = getAi();
+
+      if (!imageBase64) {
+        return res.status(400).json({ error: 'Invoice image data is required.' });
+      }
+
+      // Clean base64 data (strip data URL prefix if present)
+      const cleanBase64 = imageBase64.replace(/^data:[^;]+;base64,/, '');
+
+      // Simplify catalog to minimize prompt tokens while maintaining matching precision
+      const catalogSummary = (catalog || []).map((item: any) => ({
+        id: item.id,
+        sku: item.sku,
+        name: item.name,
+        category: item.category,
+        costPrice: item.costPrice,
+        sellPrice: item.sellPrice,
+        unit: item.unit,
+        currentQty: item.quantity,
+      }));
+
+      const systemPrompt = `You are an expert South African HVAC, Electrical, Solar, and Refrigeration trade invoice parser and stock inventory auditor.
+Your job is to accurately read scanned supplier purchase tax invoices, cash receipts, and delivery slips (e.g. from Voltex, ACDC Dynamics, ARB Electrical, Plumblink, Builders Warehouse, Metraclark, Eurocool, Tecsa Reco, Solar suppliers, etc.).
+
+CRITICAL KNOWLEDGE REGARDING SUPPLIER ITEM NAMING:
+Different suppliers and wholesalers name identical trade items differently using abbreviations, codes, or brand prefixes.
+Examples of equivalent names to reconcile:
+- "16A 1P MCB 3KA" / "CB1-16" / "DIN CIRCUIT BREAKER 16A 1POLE" <---> "16A Single Pole Circuit Breaker (C-Curve 3kA)"
+- "45+5 MFD 440V ROUND" / "CAP DUAL 45/5UF 440V" <---> "Dual Run Capacitor 45/5 uF 440V"
+- "R410A GAS 11.3KG" / "R410A CYL 11.3KG REFRIG" <---> "Refrigerant R410A 11.3kg Cylinder"
+- "CONT 25A 2P 230V" / "CONTACTOR 25A 230V 1P+N" <---> "AC Contactor 25A 2-Pole 230V"
+- "2.5MM TW+E 100M BLK" / "SURFIX 2.5MM 100M" <---> "2.5mm² Flat Twin & Earth Cable (100m Roll)"
+- "SOLAR MC4 CONN M/F" / "MC4-PAIR" <---> "MC4 Solar Connectors Male/Female Set"
+- "12WAY FLUSH DB WHITE" / "DB-F12" <---> "12-Way Flush Mount Distribution Board"
+- "ISOLATOR 32A 3P W/P" <---> "32A Triple Pole Weatherproof Isolator"
+
+EXISTING INVENTORY CATALOG:
+${JSON.stringify(catalogSummary, null, 2)}
+
+TASK:
+1. Extract the supplier/store name (e.g. "Voltex", "ACDC Dynamics", "ARB Electrical", "Builders Warehouse", "Plumblink", "Metraclark", etc.).
+2. Extract the invoice / slip number (e.g. "INV-109284") and invoice date (YYYY-MM-DD format if readable).
+3. Extract every line item purchased:
+   - "rawDescription": Exact text as printed on the supplier invoice.
+   - "supplierSku": Supplier item/part code if visible (e.g. "CB1-16").
+   - "quantity": Number of units purchased.
+   - "unitCost": Net unit cost price in South African Rand (ZAR) before VAT/tax (or totalLineCost / quantity).
+   - "totalCost": Line total cost amount.
+   - "suggestedName": Clean, professional, standardized trade name for South African trades (e.g. "16A Single Pole Circuit Breaker (C-Curve 3kA)").
+   - "suggestedCategory": Choose best from: "Electrical", "Aircon", "Solar", "Refrigeration", "Consumables", "Tools & Hardware", "Cables & Wiring", "Safety & Security".
+   - "suggestedUnit": Unit of measure (e.g. "pcs", "m", "roll", "box", "kg", "cylinder", "set", "pack").
+   - "suggestedSellPrice": Suggested retail sell price to clients (calculated as unitCost * 1.35 for a standard 35% trade markup, rounded to a clean number).
+   - "matchedStockId": If this invoice item matches an item in the EXISTING INVENTORY CATALOG above (even if named slightly differently by the supplier), provide that exact catalog item 'id'. If it is a new item not in catalog, leave as null or empty string.
+   - "matchConfidence": "EXACT" | "HIGH" | "MEDIUM" | "LOW" | "NONE".
+   - "matchReason": A concise 1-sentence note explaining the match or why it is a new item (e.g. "Matched 'CB1-16' to catalog item '16A Single Pole Circuit Breaker'").
+
+4. Ignore non-inventory rows like payment tender lines or cash change, but keep courier/delivery charges as a separate line with category "Consumables" or mark as low confidence.
+`;
+
+      const imagePart = {
+        inlineData: {
+          mimeType: mimeType || 'image/jpeg',
+          data: cleanBase64,
+        },
+      };
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents: [imagePart, { text: systemPrompt }],
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              supplierName: { type: Type.STRING },
+              invoiceNumber: { type: Type.STRING },
+              invoiceDate: { type: Type.STRING },
+              totalInvoiceAmount: { type: Type.NUMBER },
+              items: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    rawDescription: { type: Type.STRING },
+                    supplierSku: { type: Type.STRING },
+                    quantity: { type: Type.NUMBER },
+                    unitCost: { type: Type.NUMBER },
+                    totalCost: { type: Type.NUMBER },
+                    suggestedName: { type: Type.STRING },
+                    suggestedCategory: { type: Type.STRING },
+                    suggestedUnit: { type: Type.STRING },
+                    suggestedSellPrice: { type: Type.NUMBER },
+                    matchedStockId: { type: Type.STRING },
+                    matchConfidence: { type: Type.STRING },
+                    matchReason: { type: Type.STRING },
+                  },
+                  required: [
+                    'rawDescription',
+                    'quantity',
+                    'unitCost',
+                    'totalCost',
+                    'suggestedName',
+                    'suggestedCategory',
+                    'suggestedUnit',
+                    'suggestedSellPrice',
+                    'matchConfidence',
+                  ],
+                },
+              },
+            },
+            required: ['supplierName', 'invoiceNumber', 'invoiceDate', 'items'],
+          },
+        },
+      });
+
+      const parsed = JSON.parse(response.text || '{}');
+      res.json(parsed);
+    } catch (err: any) {
+      console.error('Gemini Scan Purchase Invoice Error:', err);
+      res.status(500).json({ error: err.message || 'Failed to scan purchase invoice with AI.' });
     }
   });
 
@@ -181,7 +308,7 @@ Format requirements:
 `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.7-flash',
         contents: prompt,
       });
 

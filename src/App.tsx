@@ -7,6 +7,7 @@ import { InvoiceViewModal } from './components/jobs/InvoiceViewModal';
 import { InventoryList } from './components/inventory/InventoryList';
 import { StockFormModal } from './components/inventory/StockFormModal';
 import { StockLogModal } from './components/inventory/StockLogModal';
+import { StockPurchaseScannerModal } from './components/inventory/StockPurchaseScannerModal';
 import { ClientList } from './components/clients/ClientList';
 import { AnalyticsDashboard } from './components/analytics/AnalyticsDashboard';
 import { SettingsModal } from './components/settings/SettingsModal';
@@ -58,6 +59,7 @@ export default function App() {
   const [editingStockItem, setEditingStockItem] = useState<StockItem | null>(null);
 
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const [isScanInvoiceOpen, setIsScanInvoiceOpen] = useState(false);
   const [isAICopilotOpen, setIsAICopilotOpen] = useState(false);
   const [isAppUpdateOpen, setIsAppUpdateOpen] = useState(false);
 
@@ -279,6 +281,89 @@ export default function App() {
     showToast(`Deleted "${item?.name || 'stock item'}" from inventory.`);
   };
 
+  // Handler: Apply Stock Purchases from Scanned Supplier Invoice
+  const handleApplyStockPurchase = (result: {
+    supplierName: string;
+    invoiceNumber: string;
+    invoiceDate: string;
+    itemsToUpdate: Array<{
+      stockItemId: string;
+      addQty: number;
+      newCostPrice?: number;
+      newSellPrice?: number;
+    }>;
+    itemsToCreate: Array<Omit<StockItem, 'id' | 'updatedAt'>>;
+  }) => {
+    const stockMap = new Map<string, StockItem>(stock.map((s) => [s.id, { ...s }]));
+    const newLogs: StockLog[] = [];
+    const now = new Date().toISOString();
+
+    // 1. Update existing items
+    result.itemsToUpdate.forEach((update) => {
+      const existing = stockMap.get(update.stockItemId);
+      if (existing) {
+        const oldQty = existing.quantity;
+        const newQty = oldQty + update.addQty;
+        existing.quantity = newQty;
+        if (update.newCostPrice !== undefined && update.newCostPrice > 0) {
+          existing.costPrice = update.newCostPrice;
+        }
+        if (update.newSellPrice !== undefined && update.newSellPrice > 0) {
+          existing.sellPrice = update.newSellPrice;
+        }
+        existing.updatedAt = now;
+        stockMap.set(existing.id, existing);
+
+        newLogs.unshift({
+          id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          stockItemId: existing.id,
+          stockItemName: existing.name,
+          changeQuantity: update.addQty,
+          newQuantity: newQty,
+          reason: 'Restock',
+          jobInvoiceNumber: `Supplier: ${result.supplierName} (${result.invoiceNumber})`,
+          timestamp: now,
+        });
+      }
+    });
+
+    // 2. Create new items
+    const createdItems: StockItem[] = result.itemsToCreate.map((newItem, idx) => {
+      const id = `stk-inv-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`;
+      const fullItem: StockItem = {
+        ...newItem,
+        id,
+        updatedAt: now,
+      };
+
+      newLogs.unshift({
+        id: `log-${Date.now()}-${idx}`,
+        stockItemId: id,
+        stockItemName: newItem.name,
+        changeQuantity: newItem.quantity,
+        newQuantity: newItem.quantity,
+        reason: 'Restock',
+        jobInvoiceNumber: `New Item from ${result.supplierName} (${result.invoiceNumber})`,
+        timestamp: now,
+      });
+
+      return fullItem;
+    });
+
+    const updatedStockList = [...createdItems, ...Array.from(stockMap.values())];
+
+    setStock(updatedStockList);
+    setLogs((prev) => [...newLogs, ...prev]);
+
+    const totalAddedUnits =
+      result.itemsToUpdate.reduce((s, i) => s + i.addQty, 0) +
+      result.itemsToCreate.reduce((s, i) => s + i.quantity, 0);
+
+    showToast(
+      `✅ Stock Ingested: +${totalAddedUnits} units (${result.itemsToUpdate.length} restocked, ${result.itemsToCreate.length} new items) from ${result.supplierName}!`
+    );
+  };
+
   // Handler: Populate / Reset Standard Domestic Electrical Catalog
   const handlePopulateElectricalCatalog = () => {
     if (stock.length > 0) {
@@ -412,6 +497,7 @@ export default function App() {
                 onAdjustStockQty={handleAdjustStockQty}
                 onOpenLogs={() => setIsLogsModalOpen(true)}
                 onPopulateCatalog={handlePopulateElectricalCatalog}
+                onScanInvoice={() => setIsScanInvoiceOpen(true)}
               />
             )}
 
@@ -510,6 +596,14 @@ export default function App() {
         logs={logs}
         isOpen={isLogsModalOpen}
         onClose={() => setIsLogsModalOpen(false)}
+      />
+
+      <StockPurchaseScannerModal
+        isOpen={isScanInvoiceOpen}
+        onClose={() => setIsScanInvoiceOpen(false)}
+        catalog={stock}
+        settings={settings}
+        onApplyStockPurchase={handleApplyStockPurchase}
       />
 
       <AICopilotModal
