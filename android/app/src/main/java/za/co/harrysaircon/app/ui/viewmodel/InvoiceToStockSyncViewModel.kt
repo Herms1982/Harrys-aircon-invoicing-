@@ -11,6 +11,8 @@ import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
 import com.google.ai.client.generativeai.type.generationConfig
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonSyntaxException
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanner
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
@@ -48,11 +50,18 @@ class InvoiceToStockSyncViewModel(
 
     private val _uiState = MutableStateFlow<ScanUiState>(ScanUiState.Idle)
     val uiState: StateFlow<ScanUiState> = _uiState.asStateFlow()
+    private val json: Gson = GsonBuilder().setLenient().create()
 
     /**
      * Direct Gemini GenerativeModel SDK function to bypass web server routes and avoid 200 OK HTML pages.
      */
     suspend fun processInvoiceImageWithSdk(bitmap: Bitmap, apiKey: String): String = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank()) {
+            Log.e(TAG, "Gemini API key is blank!")
+            throw IllegalArgumentException("Gemini API key is not configured.")
+        }
+
+        Log.d(TAG, "Executing native GenerativeModel with gemini-1.5-flash for bitmap: ${bitmap.width}x${bitmap.height}")
         val config = generationConfig {
             responseMimeType = "application/json"
             temperature = 0.1f
@@ -90,7 +99,62 @@ class InvoiceToStockSyncViewModel(
                 text(prompt)
             }
         )
-        response.text ?: ""
+
+        val text = response.text ?: ""
+        if (text.trim().startsWith("<!DOCTYPE", ignoreCase = true) || text.trim().startsWith("<html", ignoreCase = true)) {
+            Log.e(TAG, "Received HTML content string instead of JSON: $text")
+            throw IllegalStateException("Received an HTML error page. Check your API configuration and key.")
+        }
+        text
+    }
+
+    /**
+     * Directly processes a Bitmap with the Gemini SDK and updates UI review state
+     */
+    fun processBitmapWithSdk(context: Context, bitmap: Bitmap, apiKey: String) {
+        viewModelScope.launch {
+            _uiState.value = ScanUiState.ScanningWithGemini
+            try {
+                if (apiKey.isBlank()) {
+                    val errorMsg = "Gemini API Key is missing. Please check your configuration."
+                    Log.e(TAG, errorMsg)
+                    _uiState.value = ScanUiState.Error(errorMsg)
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+
+                val rawJson = processInvoiceImageWithSdk(bitmap, apiKey)
+                val cleanedJson = cleanJsonBlock(rawJson)
+                val invoiceDto = json.fromJson(cleanedJson, ScannedInvoiceDto::class.java)
+
+                if (invoiceDto == null || (invoiceDto.lineItems.isEmpty() && invoiceDto.supplierName.isBlank())) {
+                    val errorMsg = "No line items detected in invoice photo. Please ensure good lighting and try again."
+                    _uiState.value = ScanUiState.Error(errorMsg)
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+
+                val reconciledItems = repository.correlateScannedItems(invoiceDto)
+                _uiState.value = ScanUiState.Review(
+                    supplierName = invoiceDto.supplierName,
+                    invoiceDate = invoiceDto.invoiceDate,
+                    invoiceNumber = invoiceDto.invoiceNumber,
+                    items = reconciledItems
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Direct SDK processing failed: ${e.message}", e)
+                val userMessage = when {
+                    e.message?.contains("API_KEY", ignoreCase = true) == true ->
+                        "Invalid or missing Gemini API key. Please check your configuration."
+                    e.message?.contains("RESOURCE_EXHAUSTED", ignoreCase = true) == true ->
+                        "Scan limit reached. Please wait a moment and try again."
+                    else ->
+                        "Failed to scan photo with AI SDK. Please ensure clear lighting and try again."
+                }
+                _uiState.value = ScanUiState.Error(userMessage)
+                Toast.makeText(context, userMessage, Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     /**
@@ -110,7 +174,7 @@ class InvoiceToStockSyncViewModel(
     /**
      * Handles ML Kit scanner result URI and delegates to Gemini Vision
      */
-    fun onDocumentScanned(context: Context, scanResult: GmsDocumentScanningResult) {
+    fun onDocumentScanned(context: Context, scanResult: GmsDocumentScanningResult, apiKey: String = "") {
         val pages = scanResult.pages
         if (pages.isNullOrEmpty()) {
             val errorMsg = "No invoice pages captured."
@@ -120,14 +184,14 @@ class InvoiceToStockSyncViewModel(
         }
 
         val imageUri = pages[0].imageUri
-        processImageUri(context, imageUri)
+        processImageUri(context, imageUri, apiKey)
     }
 
     /**
      * Converts any photo URI (from Camera capture, Document Scanner, or Gallery)
      * into a downscaled, EXIF-corrected Bitmap, then sends it to the Gemini SDK.
      */
-    fun processImageUri(context: Context, uri: Uri) {
+    fun processImageUri(context: Context, uri: Uri, apiKey: String = "") {
         viewModelScope.launch {
             _uiState.value = ScanUiState.ScanningWithGemini
             try {
@@ -147,7 +211,11 @@ class InvoiceToStockSyncViewModel(
                     return@launch
                 }
 
-                processBitmap(context, bitmap)
+                if (apiKey.isNotBlank()) {
+                    processBitmapWithSdk(context, bitmap, apiKey)
+                } else {
+                    processBitmap(context, bitmap)
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing image URI", e)
                 val userMsg = "Failed to scan photo. Please ensure clear lighting and try again."
@@ -158,7 +226,7 @@ class InvoiceToStockSyncViewModel(
     }
 
     /**
-     * Direct Bitmap ingestion via the Gemini SDK
+     * Direct Bitmap ingestion via the Gemini SDK Service
      */
     fun processBitmap(context: Context, bitmap: Bitmap) {
         viewModelScope.launch {
@@ -224,6 +292,20 @@ class InvoiceToStockSyncViewModel(
 
     fun resetState() {
         _uiState.value = ScanUiState.Idle
+    }
+
+    private fun cleanJsonBlock(text: String): String {
+        var trimmed = text.trim()
+        if (trimmed.startsWith("```")) {
+            val firstLineBreak = trimmed.indexOf('\n')
+            if (firstLineBreak != -1) {
+                trimmed = trimmed.substring(firstLineBreak + 1)
+            }
+        }
+        if (trimmed.endsWith("```")) {
+            trimmed = trimmed.substring(0, trimmed.length - 3)
+        }
+        return trimmed.trim()
     }
 
     companion object {
