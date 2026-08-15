@@ -7,6 +7,10 @@ import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.content
+import com.google.ai.client.generativeai.type.generationConfig
+import com.google.gson.Gson
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanner
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
@@ -15,11 +19,14 @@ import za.co.harrysaircon.app.data.repository.ReconciledReviewItem
 import za.co.harrysaircon.app.data.repository.StockSyncRepository
 import za.co.harrysaircon.app.domain.scanner.ImageUtils
 import za.co.harrysaircon.app.domain.scanner.InvoiceScannerService
+import za.co.harrysaircon.app.domain.scanner.ScannedInvoiceDto
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 sealed interface ScanUiState {
     object Idle : ScanUiState
@@ -41,6 +48,50 @@ class InvoiceToStockSyncViewModel(
 
     private val _uiState = MutableStateFlow<ScanUiState>(ScanUiState.Idle)
     val uiState: StateFlow<ScanUiState> = _uiState.asStateFlow()
+
+    /**
+     * Direct Gemini GenerativeModel SDK function to bypass web server routes and avoid 200 OK HTML pages.
+     */
+    suspend fun processInvoiceImageWithSdk(bitmap: Bitmap, apiKey: String): String = withContext(Dispatchers.IO) {
+        val config = generationConfig {
+            responseMimeType = "application/json"
+            temperature = 0.1f
+        }
+        val generativeModel = GenerativeModel(
+            modelName = "gemini-1.5-flash",
+            apiKey = apiKey,
+            generationConfig = config
+        )
+
+        val prompt = """
+            Analyze this tax invoice/receipt photo. Extract supplier name, date, invoice_number, total_amount, 
+            and line_items (item_code, description, quantity_purchased, unit_cost_price, total_price). 
+            Return purely as valid JSON without HTML or markdown formatting:
+            {
+              "supplier_name": "String",
+              "invoice_date": "YYYY-MM-DD",
+              "invoice_number": "String",
+              "line_items": [
+                {
+                  "item_code": "String",
+                  "description": "String",
+                  "quantity_purchased": 0.0,
+                  "unit_cost_price": 0.0,
+                  "total_price": 0.0
+                }
+              ],
+              "total_amount": 0.0
+            }
+        """.trimIndent()
+
+        val response = generativeModel.generateContent(
+            content {
+                image(bitmap)
+                text(prompt)
+            }
+        )
+        response.text ?: ""
+    }
 
     /**
      * Initializes Google ML Kit Document Scanner Client
@@ -74,7 +125,7 @@ class InvoiceToStockSyncViewModel(
 
     /**
      * Converts any photo URI (from Camera capture, Document Scanner, or Gallery)
-     * into a downscaled, EXIF-corrected Bitmap, then sends it to Gemini.
+     * into a downscaled, EXIF-corrected Bitmap, then sends it to the Gemini SDK.
      */
     fun processImageUri(context: Context, uri: Uri) {
         viewModelScope.launch {
@@ -82,7 +133,7 @@ class InvoiceToStockSyncViewModel(
             try {
                 Log.d(TAG, "Decoding and downscaling image from URI: $uri")
                 
-                // Downscale image to max 1024px to fit within memory and Gemini payload limits
+                // Downscale image to max 1024px to stay within memory limits and ensure fast processing
                 val bitmap: Bitmap? = ImageUtils.decodeAndScaleBitmapFromUri(
                     context = context,
                     uri = uri,
@@ -107,7 +158,7 @@ class InvoiceToStockSyncViewModel(
     }
 
     /**
-     * Direct Bitmap ingestion (e.g. from camera callback or byte buffer)
+     * Direct Bitmap ingestion via the Gemini SDK
      */
     fun processBitmap(context: Context, bitmap: Bitmap) {
         viewModelScope.launch {
