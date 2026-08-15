@@ -24,41 +24,63 @@ export interface AIParsedNoteResult {
   }>;
 }
 
+/**
+ * Safely fetches and parses JSON from API endpoints,
+ * intercepting HTML error pages (404, 500, etc.) before JSON parsing.
+ */
+async function safeFetchJson<T>(url: string, options: RequestInit): Promise<T> {
+  const res = await fetch(url, options);
+  const contentType = res.headers.get('content-type') || '';
+  const rawText = await res.text();
+
+  // Intercept HTML error page responses (404 SPA fallback, server crashes, etc.)
+  if (rawText.trim().startsWith('<!DOCTYPE') || rawText.trim().startsWith('<html') || contentType.includes('text/html')) {
+    console.error(`[API Network Error] ${res.status} ${res.statusText} at ${url}. Received HTML instead of JSON:`, rawText.slice(0, 300));
+    throw new Error(
+      `Server returned an HTML error page (${res.status} ${res.statusText}). Please check the API endpoint and backend connection.`
+    );
+  }
+
+  if (!res.ok) {
+    let errorMessage = `Request failed with status ${res.status} (${res.statusText})`;
+    try {
+      const errJson = JSON.parse(rawText);
+      if (errJson.error) errorMessage = errJson.error;
+    } catch {
+      if (rawText.trim()) errorMessage = rawText.slice(0, 200);
+    }
+    throw new Error(errorMessage);
+  }
+
+  try {
+    return JSON.parse(rawText) as T;
+  } catch (err: any) {
+    console.error(`[JSON Parse Error] Failed to parse API response from ${url}:`, rawText);
+    throw new Error(`Invalid JSON received from server. ${err.message || ''}`);
+  }
+}
+
 export async function fetchAIDiagnosis(
   description: string,
   category: string,
   equipment: string
 ): Promise<AIDiagnosisResult> {
-  const res = await fetch('/api/ai/diagnose', {
+  return safeFetchJson<AIDiagnosisResult>('/api/ai/diagnose', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ description, category, equipment }),
   });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || 'Failed to generate AI diagnosis');
-  }
-
-  return res.json();
 }
 
 export async function parseFieldNotesWithAI(
   rawText: string,
   availableStock: StockItem[]
 ): Promise<AIParsedNoteResult> {
-  const res = await fetch('/api/ai/parse-note', {
+  return safeFetchJson<AIParsedNoteResult>('/api/ai/parse-note', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ rawText, availableStock }),
   });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || 'Failed to parse field notes with AI');
-  }
-
-  return res.json();
 }
 
 export async function generateAICustomerMessage(
@@ -74,18 +96,11 @@ export async function generateAICustomerMessage(
     branchCode?: string;
   }
 ): Promise<string> {
-  const res = await fetch('/api/ai/generate-message', {
+  const data = await safeFetchJson<{ message?: string }>('/api/ai/generate-message', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type, job, client, businessName, bankingDetails }),
   });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || 'Failed to generate customer message');
-  }
-
-  const data = await res.json();
   return data.message || '';
 }
 
@@ -128,18 +143,11 @@ export async function scanPurchaseInvoiceWithAI(
   mimeType: string,
   catalog: StockItem[]
 ): Promise<ScannedInvoiceResult> {
-  const res = await fetch('/api/ai/scan-purchase-invoice', {
+  const data = await safeFetchJson<any>('/api/ai/scan-purchase-invoice', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ imageBase64, mimeType, catalog }),
   });
-
-  if (!res.ok) {
-    const errData = await res.json().catch(() => ({}));
-    throw new Error(errData.error || 'Failed to scan purchase invoice with AI');
-  }
-
-  const data = await res.json();
   
   // Transform raw items to include default action states for user review
   const transformedItems: ScannedInvoiceItem[] = (data.items || []).map((raw: any) => {
