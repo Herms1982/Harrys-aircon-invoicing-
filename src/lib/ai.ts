@@ -1,4 +1,5 @@
 import { StockItem, CalloutJob, Client } from '../types';
+import { parseFieldNotesClientFallback, generateDiagnosticsClientFallback, parseInvoiceSlipClientFallback } from './offline-ai-fallback';
 
 export interface AIDiagnosisResult {
   diagnosis: string;
@@ -65,22 +66,32 @@ export async function fetchAIDiagnosis(
   category: string,
   equipment: string
 ): Promise<AIDiagnosisResult> {
-  return safeFetchJson<AIDiagnosisResult>('/api/ai/diagnose', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ description, category, equipment }),
-  });
+  try {
+    return await safeFetchJson<AIDiagnosisResult>('/api/ai/diagnose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description, category, equipment }),
+    });
+  } catch (err: any) {
+    console.warn('[AI Diagnosis] Server request failed, activating client diagnostic engine:', err.message);
+    return generateDiagnosticsClientFallback(description, category, equipment);
+  }
 }
 
 export async function parseFieldNotesWithAI(
   rawText: string,
   availableStock: StockItem[]
 ): Promise<AIParsedNoteResult> {
-  return safeFetchJson<AIParsedNoteResult>('/api/ai/parse-note', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ rawText, availableStock }),
-  });
+  try {
+    return await safeFetchJson<AIParsedNoteResult>('/api/ai/parse-note', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rawText, availableStock }),
+    });
+  } catch (err: any) {
+    console.warn('[AI Note Parse] Server request failed, activating client heuristic parser:', err.message);
+    return parseFieldNotesClientFallback(rawText, availableStock);
+  }
 }
 
 export async function generateAICustomerMessage(

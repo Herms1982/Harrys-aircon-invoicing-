@@ -313,16 +313,16 @@ export const AppUpdateModal: React.FC<AppUpdateModalProps> = ({
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex items-center gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <div>
-                  <strong className="text-slate-200 block">Trusted Release Certificate</strong>
-                  <span className="text-slate-500">2048-bit RSA Signed for Harry's Aircon</span>
+                  <strong className="text-slate-200 block">Seamless Direct Overwrite Updates</strong>
+                  <span className="text-slate-500">Same keystore signature allows direct in-place update without uninstalling</span>
                 </div>
               </div>
 
               <div className="bg-slate-900 p-2.5 rounded-xl border border-slate-800 flex items-center gap-2">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <div>
-                  <strong className="text-slate-200 block">PDF & File Storage Access</strong>
-                  <span className="text-slate-500">Direct write to /Documents & Downloads</span>
+                  <strong className="text-slate-200 block">Package Installer Access</strong>
+                  <span className="text-slate-500">REQUEST_INSTALL_PACKAGES enabled for direct APK installation</span>
                 </div>
               </div>
             </div>

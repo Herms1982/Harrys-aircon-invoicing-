@@ -21,6 +21,40 @@ async function startServer() {
     });
   };
 
+  // Robust helper to run generative models with fallback
+  const generateWithFallback = async (params: {
+    contents: any;
+    config?: any;
+    fallbackModels?: string[];
+  }) => {
+    const ai = getAi();
+    const models = [
+      'gemini-3.5-flash',
+      'gemini-3.5-flash-lite',
+      'gemini-3.6-flash',
+      'gemini-3.1-flash-lite',
+      'gemini-3.7-flash',
+    ];
+    let lastError: any = null;
+
+    for (const model of models) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents: params.contents,
+          config: params.config,
+        });
+        if (response && response.text) {
+          return response;
+        }
+      } catch (err: any) {
+        console.warn(`[AI Model Fallback] Model ${model} failed:`, err.message);
+        lastError = err;
+      }
+    }
+    throw lastError || new Error('All AI models unavailable');
+  };
+
   // API Route: AI Health check
   app.get('/api/ai/health', (req, res) => {
     res.json({ status: 'ok', hasApiKey: Boolean(process.env.GEMINI_API_KEY) });
@@ -30,7 +64,6 @@ async function startServer() {
   app.post('/api/ai/diagnose', async (req, res) => {
     try {
       const { description, category, equipment } = req.body;
-      const ai = getAi();
 
       const prompt = `You are an expert master HVAC, Electrical, and Solar engineer assisting a field technician for Harry's Aircon Electrical and Solar services in South Africa.
 System Domain: ${category || 'Aircon & Electrical'}
@@ -45,8 +78,7 @@ Provide a concise, practical JSON diagnosis and guidance:
 5. "invoiceSummary": Professional 2-sentence description of the service to add to customer quote/invoice.
 `;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
+      const response = await generateWithFallback({
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
@@ -82,7 +114,6 @@ Provide a concise, practical JSON diagnosis and guidance:
   app.post('/api/ai/parse-note', async (req, res) => {
     try {
       const { rawText, availableStock } = req.body;
-      const ai = getAi();
 
       const prompt = `You are an intelligent callout logger for Harry's Aircon Electrical & Solar services.
 Extract structured job and client details from these technician field notes:
@@ -99,8 +130,7 @@ Rules:
 5. Estimate labor hours based on description.
 `;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
+      const response = await generateWithFallback({
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
@@ -145,7 +175,6 @@ Rules:
   app.post('/api/ai/scan-purchase-invoice', async (req, res) => {
     try {
       const { imageBase64, mimeType = 'image/jpeg', catalog = [] } = req.body;
-      const ai = getAi();
 
       if (!imageBase64) {
         return res.status(400).json({ error: 'Invoice image data is required.' });
@@ -211,8 +240,7 @@ TASK:
         },
       };
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
+      const response = await generateWithFallback({
         contents: [imagePart, { text: systemPrompt }],
         config: {
           responseMimeType: 'application/json',
@@ -272,7 +300,6 @@ TASK:
   app.post('/api/ai/generate-message', async (req, res) => {
     try {
       const { type, job, client, businessName, bankingDetails } = req.body;
-      const ai = getAi();
 
       const bankInfo = bankingDetails || {
         accountName: 'Harrys aircon and Electrical',
@@ -307,8 +334,7 @@ Format requirements:
 - Keep it concise, ready to copy and send to the customer.
 `;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
+      const response = await generateWithFallback({
         contents: prompt,
       });
 
