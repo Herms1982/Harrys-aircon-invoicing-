@@ -1,12 +1,13 @@
 package za.co.harrysaircon.app.ui.screens
 
-import android.app.Activity
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -16,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DocumentScanner
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -30,14 +32,38 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
-import za.co.harrysaircon.app.data.repository.MatchType
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import za.co.harrysaircon.app.data.repository.ReconciledReviewItem
 import za.co.harrysaircon.app.domain.scanner.ImageUtils
 import za.co.harrysaircon.app.ui.viewmodel.InvoiceToStockSyncViewModel
 import za.co.harrysaircon.app.ui.viewmodel.ScanUiState
+import java.io.File
 
 private const val TAG = "ScanInvoiceScreen"
+
+/**
+ * Creates a secure temporary file URI using FileProvider for direct camera captures.
+ */
+private fun createTempImageUri(context: Context): Uri? {
+    return try {
+        val storageDir = File(context.cacheDir, "camera_captures").apply {
+            if (!exists()) mkdirs()
+        }
+        val tempFile = File.createTempFile("invoice_capture_", ".jpg", storageDir).apply {
+            createNewFile()
+            deleteOnExit()
+        }
+        FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            tempFile
+        )
+    } catch (e: Exception) {
+        Log.e(TAG, "Error creating temporary file for camera capture: ${e.message}", e)
+        null
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,28 +75,99 @@ fun ScanInvoiceScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     var selectedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var tempPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingCameraLaunch by remember { mutableStateOf(false) }
 
-    // Launcher for ML Kit Document Scanner
-    val scannerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartIntentSenderForResult()
-    ) { activityResult ->
-        if (activityResult.resultCode == Activity.RESULT_OK) {
-            val gmsResult = GmsDocumentScanningResult.fromActivityResultIntent(activityResult.data)
-            val uri = gmsResult?.pages?.firstOrNull()?.imageUri
-            if (uri != null) {
-                val bitmap = ImageUtils.decodeAndScaleBitmapFromUri(context, uri, maxDimension = 1024)
-                selectedBitmap = bitmap
+    // 1. Direct Camera Capture Launcher (Takes high-resolution photo straight to FileProvider Uri)
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempPhotoUri != null) {
+            try {
+                Log.d(TAG, "Camera photo captured successfully to $tempPhotoUri. Decoding...")
+                val bitmap = ImageUtils.decodeAndScaleBitmapFromUri(
+                    context = context,
+                    uri = tempPhotoUri!!,
+                    maxDimension = 1024
+                )
+                if (bitmap != null) {
+                    selectedBitmap = bitmap
+                    Toast.makeText(context, "Invoice photo captured! Tap 'Process Invoice with AI' to analyze.", Toast.LENGTH_SHORT).show()
+                } else {
+                    val errorMsg = "Could not decode photo from camera."
+                    Log.e(TAG, errorMsg)
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error processing camera capture: ${e.message}", e)
+                Toast.makeText(context, "Failed to load camera image: ${e.message}", Toast.LENGTH_LONG).show()
             }
+        } else {
+            Log.d(TAG, "Camera capture cancelled or failed.")
         }
     }
 
-    // Launcher for Photo Gallery Selection
+    // Helper to start the native Camera
+    val launchDirectCamera: () -> Unit = {
+        val uri = createTempImageUri(context)
+        if (uri != null) {
+            tempPhotoUri = uri
+            takePictureLauncher.launch(uri)
+        } else {
+            val err = "Unable to create secure storage file for camera photo."
+            Log.e(TAG, err)
+            Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // 2. Runtime Camera Permission Request Launcher
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Log.d(TAG, "Camera permission granted by user.")
+            if (pendingCameraLaunch) {
+                pendingCameraLaunch = false
+                launchDirectCamera()
+            }
+        } else {
+            pendingCameraLaunch = false
+            Log.w(TAG, "Camera permission was denied by user.")
+            Toast.makeText(
+                context,
+                "Camera permission is required to photograph invoices. Please grant permission in Settings.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    // Function to trigger direct camera with permission verification
+    val onTakePhotoClicked: () -> Unit = {
+        val permissionCheck = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+        if (permissionCheck == PackageManager.PERMISSION_GRANTED) {
+            launchDirectCamera()
+        } else {
+            pendingCameraLaunch = true
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    // 3. Photo Gallery Selection Launcher (Backup option)
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
-            val bitmap = ImageUtils.decodeAndScaleBitmapFromUri(context, uri, maxDimension = 1024)
-            selectedBitmap = bitmap
+            try {
+                val bitmap = ImageUtils.decodeAndScaleBitmapFromUri(context, uri, maxDimension = 1024)
+                if (bitmap != null) {
+                    selectedBitmap = bitmap
+                } else {
+                    Toast.makeText(context, "Failed to decode selected image.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error opening gallery image", e)
+                Toast.makeText(context, "Error loading image: ${e.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -115,30 +212,23 @@ fun ScanInvoiceScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Capture or select a photo of a trade purchase invoice to parse with the native Gemini SDK.",
+                                "Take a photo of a trade purchase invoice to parse line items using the native Gemini 1.5 Flash SDK.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Spacer(modifier = Modifier.height(28.dp))
 
+                            // DIRECT CAMERA BUTTON WITH RUNTIME PERMISSION
                             Button(
-                                onClick = {
-                                    val scanner = viewModel.createDocumentScanner(context)
-                                    scanner.getStartScanIntent(context as Activity)
-                                        .addOnSuccessListener { intentSender ->
-                                            scannerLauncher.launch(
-                                                IntentSenderRequest.Builder(intentSender).build()
-                                            )
-                                        }
-                                },
+                                onClick = onTakePhotoClicked,
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier
-                                    .fillMaxWidth(0.85f)
-                                    .height(52.dp)
+                                    .fillMaxWidth(0.9f)
+                                    .height(54.dp)
                             ) {
-                                Icon(Icons.Default.DocumentScanner, contentDescription = null)
+                                Icon(Icons.Default.CameraAlt, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Capture with Camera", fontWeight = FontWeight.Bold)
+                                Text("Take Photo with Camera", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                             }
 
                             Spacer(modifier = Modifier.height(12.dp))
@@ -147,12 +237,12 @@ fun ScanInvoiceScreen(
                                 onClick = { galleryLauncher.launch("image/*") },
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier
-                                    .fillMaxWidth(0.85f)
-                                    .height(52.dp)
+                                    .fillMaxWidth(0.9f)
+                                    .height(54.dp)
                             ) {
                                 Icon(Icons.Default.PhotoLibrary, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Choose from Gallery", fontWeight = FontWeight.Bold)
+                                Text("Choose from Gallery", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                             }
                         } else {
                             // Selected Photo Preview
@@ -160,35 +250,42 @@ fun ScanInvoiceScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f, fill = false)
-                                    .heightIn(max = 350.dp),
+                                    .heightIn(max = 360.dp),
                                 shape = RoundedCornerShape(16.dp)
                             ) {
                                 Image(
                                     bitmap = selectedBitmap!!.asImageBitmap(),
-                                    contentDescription = "Invoice Preview",
+                                    contentDescription = "Invoice Photo Preview",
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
 
                             Spacer(modifier = Modifier.height(20.dp))
 
-                            // DIRECT Gemini SDK ONCLICK BUTTON (No HTTP / Retrofit)
+                            // DIRECT Gemini SDK ONCLICK BUTTON (With full try-catch and Toast error reporting)
                             Button(
                                 onClick = {
                                     val currentBitmap = selectedBitmap
                                     if (currentBitmap == null) {
-                                        Toast.makeText(context, "Please select an image first", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "Please take or select an invoice photo first.", Toast.LENGTH_SHORT).show()
                                         return@Button
                                     }
 
                                     if (apiKey.isBlank()) {
-                                        Log.e(TAG, "Gemini API Key is blank! Please configure BuildConfig.GEMINI_API_KEY")
-                                        Toast.makeText(context, "Missing Gemini API Key. Please check settings.", Toast.LENGTH_LONG).show()
+                                        val errorMsg = "Gemini API Key is missing. Please check your configuration."
+                                        Log.e(TAG, errorMsg)
+                                        Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
                                         return@Button
                                     }
 
-                                    Log.d(TAG, "Triggering direct Gemini SDK extraction via processInvoiceImageWithSdk")
-                                    viewModel.processBitmapWithSdk(context, currentBitmap, apiKey)
+                                    try {
+                                        Log.d(TAG, "Initiating Gemini SDK extraction on bitmap (${currentBitmap.width}x${currentBitmap.height})")
+                                        viewModel.processBitmapWithSdk(context, currentBitmap, apiKey)
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Error starting invoice scan: ${e.message}", e)
+                                        val failureMsg = "Scan initiation failed: ${e.localizedMessage ?: e.message}"
+                                        Toast.makeText(context, failureMsg, Toast.LENGTH_LONG).show()
+                                    }
                                 },
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier
@@ -203,8 +300,18 @@ fun ScanInvoiceScreen(
 
                             Spacer(modifier = Modifier.height(12.dp))
 
-                            TextButton(onClick = { selectedBitmap = null }) {
-                                Text("Choose Different Image")
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                TextButton(onClick = onTakePhotoClicked) {
+                                    Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Retake Photo")
+                                }
+                                TextButton(onClick = { selectedBitmap = null }) {
+                                    Text("Clear")
+                                }
                             }
                         }
                     }
@@ -219,7 +326,8 @@ fun ScanInvoiceScreen(
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.height(16.dp))
                         Text("Reading invoice with native Gemini 1.5 Flash SDK...", fontWeight = FontWeight.SemiBold)
-                        Text("Extracting supplier and line items directly on device", color = Color.Gray, fontSize = 13.sp)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Extracting supplier, line items, and prices directly on device", color = Color.Gray, fontSize = 13.sp)
                     }
                 }
 
@@ -271,7 +379,14 @@ fun ScanInvoiceScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Button(
-                                onClick = { viewModel.confirmAndUpdateStock() },
+                                onClick = {
+                                    try {
+                                        viewModel.confirmAndUpdateStock()
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Error updating stock", e)
+                                        Toast.makeText(context, "Failed to update stock: ${e.message}", Toast.LENGTH_LONG).show()
+                                    }
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(16.dp)
