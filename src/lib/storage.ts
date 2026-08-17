@@ -12,6 +12,86 @@ const KEYS = {
 // Demo ID detection
 const isDemoId = (id: string) => /^(stk|cli|job|log)-[1-9]$/.test(id) || id.startsWith('job-100');
 
+/**
+ * Normalizes any legacy or custom category string strictly into one of the 5 official categories:
+ * 1. Electrical
+ * 2. Solar
+ * 3. Refrigeration
+ * 4. Air Conditioning
+ * 5. Security and CCTV
+ */
+export function normalizeStockCategory(rawCategory: string | undefined): string {
+  if (!rawCategory) return 'Electrical';
+  const norm = rawCategory.trim().toLowerCase();
+
+  // 1. Security and CCTV
+  if (
+    norm.includes('security') ||
+    norm.includes('cctv') ||
+    norm.includes('camera') ||
+    norm.includes('alarm') ||
+    norm.includes('surveillance') ||
+    norm.includes('gate') ||
+    norm.includes('siren') ||
+    norm.includes('remote') ||
+    norm.includes('balun')
+  ) {
+    return 'Security and CCTV';
+  }
+
+  // 2. Solar
+  if (
+    norm.includes('solar') ||
+    norm.includes('inverter') ||
+    norm.includes('photovoltaic') ||
+    norm.includes('pv') ||
+    norm.includes('battery') ||
+    norm.includes('backup power') ||
+    norm.includes('mppt')
+  ) {
+    return 'Solar';
+  }
+
+  // 3. Refrigeration
+  if (
+    norm.includes('refrigeration') ||
+    norm.includes('refrigerant') ||
+    norm.includes('fridge') ||
+    norm.includes('freezer') ||
+    norm.includes('cold room') ||
+    norm.includes('gas & refrigerant') ||
+    norm.includes('evaporator') ||
+    norm.includes('defrost') ||
+    norm.includes('txv') ||
+    norm.includes('drier') ||
+    norm.includes('r134a') ||
+    norm.includes('r404a') ||
+    norm.includes('r600a')
+  ) {
+    return 'Refrigeration';
+  }
+
+  // 4. Air Conditioning
+  if (
+    norm.includes('aircon') ||
+    norm.includes('air conditioning') ||
+    norm.includes('cooling') ||
+    norm.includes('hvac') ||
+    norm.includes('split unit') ||
+    norm.includes('condenser') ||
+    norm.includes('r410a') ||
+    norm.includes('r32') ||
+    norm.includes('r22') ||
+    norm.includes('compressor') ||
+    norm.includes('drain pipe')
+  ) {
+    return 'Air Conditioning';
+  }
+
+  // 5. Electrical (all circuit breakers, wiring, cables, switches, sockets, DB boards, consumables, hardware)
+  return 'Electrical';
+}
+
 // Helper getters
 export function getStoredStock(): StockItem[] {
   try {
@@ -26,10 +106,29 @@ export function getStoredStock(): StockItem[] {
       saveStoredStock(INITIAL_STOCK);
       return INITIAL_STOCK;
     }
-    if (cleaned.length !== parsed.length) {
-      saveStoredStock(cleaned);
+
+    let needsUpdate = false;
+    const normalized = cleaned.map((item) => {
+      const fixedCat = normalizeStockCategory(item.category);
+      if (fixedCat !== item.category) {
+        needsUpdate = true;
+        return { ...item, category: fixedCat };
+      }
+      return item;
+    });
+
+    // If new catalog categories (like Solar, Refrigeration, Air Conditioning, Security and CCTV) are missing from stored stock, merge them in cleanly
+    const existingIds = new Set(normalized.map((i) => i.id));
+    const missingCatalogItems = INITIAL_STOCK.filter((item) => !existingIds.has(item.id));
+    if (missingCatalogItems.length > 0) {
+      normalized.push(...missingCatalogItems);
+      needsUpdate = true;
     }
-    return cleaned;
+
+    if (needsUpdate || cleaned.length !== parsed.length) {
+      saveStoredStock(normalized);
+    }
+    return normalized;
   } catch {
     return INITIAL_STOCK;
   }

@@ -25,7 +25,7 @@ import {
   Sliders,
   DollarSign,
 } from 'lucide-react';
-import { StockItem, BusinessSettings } from '../../types';
+import { StockItem, BusinessSettings, STOCK_CATEGORIES } from '../../types';
 import { ScannedInvoiceItem, ScannedInvoiceResult, scanPurchaseInvoiceWithAI } from '../../lib/ai';
 import { findBestCatalogMatch, saveSupplierAliasMapping } from '../../lib/stockMatching';
 import { formatCurrency } from '../../lib/calculations';
@@ -134,7 +134,7 @@ const SAMPLE_PRESETS = [
         unitCost: 95.0,
         totalCost: 570.0,
         suggestedName: 'Dual Run Capacitor 45/5 uF 440V',
-        suggestedCategory: 'Aircon',
+        suggestedCategory: 'Air Conditioning',
         suggestedUnit: 'pcs',
         suggestedSellPrice: 145.0,
       },
@@ -145,7 +145,7 @@ const SAMPLE_PRESETS = [
         unitCost: 140.0,
         totalCost: 560.0,
         suggestedName: 'AC Contactor 25A 2-Pole 230V',
-        suggestedCategory: 'Aircon',
+        suggestedCategory: 'Air Conditioning',
         suggestedUnit: 'pcs',
         suggestedSellPrice: 210.0,
       },
@@ -156,7 +156,7 @@ const SAMPLE_PRESETS = [
         unitCost: 1650.0,
         totalCost: 1650.0,
         suggestedName: 'Refrigerant R410A 11.3kg Cylinder',
-        suggestedCategory: 'Aircon',
+        suggestedCategory: 'Air Conditioning',
         suggestedUnit: 'cylinder',
         suggestedSellPrice: 2450.0,
       },
@@ -991,13 +991,17 @@ export const StockPurchaseScannerModal: React.FC<StockPurchaseScannerModalProps>
                                   className="w-full bg-slate-950 border border-blue-500/40 rounded-xl px-2.5 py-1.5 text-xs text-white font-medium focus:border-blue-400 outline-none"
                                 />
                                 <div className="flex items-center gap-2 mt-1">
-                                  <input
-                                    type="text"
+                                  <select
                                     value={item.customCategory}
                                     onChange={(e) => handleUpdateItemField(idx, 'customCategory', e.target.value)}
-                                    placeholder="Category (e.g. Electrical)"
-                                    className="w-1/2 bg-slate-950 border border-slate-700 rounded-lg px-2 py-0.5 text-[11px] text-slate-300"
-                                  />
+                                    className="w-1/2 bg-slate-950 border border-slate-700 rounded-lg px-2 py-0.5 text-[11px] text-slate-200 focus:border-blue-400 outline-none"
+                                  >
+                                    {STOCK_CATEGORIES.map((cat, catIdx) => (
+                                      <option key={cat} value={cat}>
+                                        {catIdx + 1}. {cat}
+                                      </option>
+                                    ))}
+                                  </select>
                                   <input
                                     type="text"
                                     value={item.customUnit}

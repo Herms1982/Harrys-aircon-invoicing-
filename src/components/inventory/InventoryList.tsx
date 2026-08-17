@@ -20,9 +20,26 @@ import {
   Camera,
   Sparkles,
 } from 'lucide-react';
-import { StockItem, BusinessSettings } from '../../types';
+import { StockItem, BusinessSettings, STOCK_CATEGORIES } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
 import { exportStockToExcel, downloadStockPDF, shareStockListText } from '../../lib/exportUtils';
+
+function getCategoryBadgeClass(category: string): string {
+  switch (category) {
+    case 'Electrical':
+      return 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+    case 'Solar':
+      return 'bg-orange-500/15 text-orange-300 border-orange-500/30';
+    case 'Refrigeration':
+      return 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30';
+    case 'Air Conditioning':
+      return 'bg-sky-500/15 text-sky-300 border-sky-500/30';
+    case 'Security and CCTV':
+      return 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
+    default:
+      return 'bg-slate-800 text-slate-300 border-slate-700';
+  }
+}
 
 interface InventoryListProps {
   stock: StockItem[];
@@ -60,8 +77,11 @@ export const InventoryList: React.FC<InventoryListProps> = ({
     }
   };
 
-  // Extract unique categories
-  const categories = ['ALL', ...Array.from(new Set(stock.map((s) => s.category)))];
+  // Order categories: ALL, then 5 standard categories, then any custom categories
+  const standardSet = new Set<string>(STOCK_CATEGORIES as readonly string[]);
+  const presentCategories: string[] = Array.from(new Set(stock.map((s) => s.category)));
+  const customCategories = presentCategories.filter((c: string) => !standardSet.has(c));
+  const categories = ['ALL', ...STOCK_CATEGORIES, ...customCategories];
 
   const filteredStock = stock.filter((item) => {
     const matchesSearch =
@@ -328,7 +348,7 @@ export const InventoryList: React.FC<InventoryListProps> = ({
                       <span className="text-[10px] font-mono font-bold text-indigo-400 bg-indigo-500/10 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
                         {item.sku}
                       </span>
-                      <span className="text-[10px] text-slate-400 ml-2 font-medium">
+                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ml-2 ${getCategoryBadgeClass(item.category)}`}>
                         {item.category}
                       </span>
                       <h3 className="text-base font-bold text-white mt-1.5 leading-snug">

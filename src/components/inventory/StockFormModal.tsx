@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Save, Boxes } from 'lucide-react';
-import { StockItem, BusinessSettings } from '../../types';
+import { StockItem, BusinessSettings, STOCK_CATEGORIES } from '../../types';
 
 interface StockFormModalProps {
   initialItem?: StockItem | null;
@@ -87,13 +87,11 @@ export const StockFormModal: React.FC<StockFormModalProps> = ({
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 text-white font-semibold rounded-2xl p-3 focus:outline-none focus:border-indigo-500"
               >
-                <option value="Electrical">Electrical</option>
-                <option value="Plumbing">Plumbing</option>
-                <option value="Cabling & Network">Cabling & Network</option>
-                <option value="Lighting">Lighting</option>
-                <option value="Backup Power">Backup Power</option>
-                <option value="Hardware">Hardware</option>
-                <option value="Tools & Spares">Tools & Spares</option>
+                {STOCK_CATEGORIES.map((cat, idx) => (
+                  <option key={cat} value={cat}>
+                    {idx + 1}. {cat}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

@@ -40,9 +40,11 @@ export function parseFieldNotesClientFallback(rawText: string, catalog: StockIte
   }
 
   // 5. Detect Job Category
-  let category = 'Aircon';
+  let category = 'Air Conditioning';
   const lower = text.toLowerCase();
-  if (lower.includes('solar') || lower.includes('inverter') || lower.includes('battery') || lower.includes('pv panel')) {
+  if (lower.includes('security') || lower.includes('cctv') || lower.includes('camera') || lower.includes('alarm') || lower.includes('gate') || lower.includes('surveillance')) {
+    category = 'Security and CCTV';
+  } else if (lower.includes('solar') || lower.includes('inverter') || lower.includes('battery') || lower.includes('pv panel')) {
     category = 'Solar';
   } else if (lower.includes('breaker') || lower.includes('plug') || lower.includes('db board') || lower.includes('earth') || lower.includes('switch') || lower.includes('electrical') || lower.includes('wiring')) {
     category = 'Electrical';
@@ -202,7 +204,7 @@ export function parseInvoiceSlipClientFallback(
         unitCost: 185.0,
         totalCost: 185.0,
         suggestedName: 'Dual Run Capacitor 45/5 uF 440V',
-        suggestedCategory: 'Aircon',
+        suggestedCategory: 'Air Conditioning',
         suggestedUnit: 'pcs',
         suggestedSellPrice: 285.0,
         matchedStockId: catalog.find(c => c.name.toLowerCase().includes('capacitor'))?.id || null,
@@ -213,7 +215,7 @@ export function parseInvoiceSlipClientFallback(
         customQty: 1,
         customCostPrice: 185.0,
         customSellPrice: 285.0,
-        customCategory: 'Aircon',
+        customCategory: 'Air Conditioning',
         customUnit: 'pcs',
         updateCatalogCostPrice: true,
         rememberMapping: true,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Fuel, Clock, Package, DollarSign, Calculator, UserPlus, AlertTriangle, ShieldCheck, Sparkles, Loader2 } from 'lucide-react';
-import { CalloutJob, Client, StockItem, UsedStockItem, MiscExpense, BusinessSettings, JobStatus } from '../../types';
+import { CalloutJob, Client, StockItem, UsedStockItem, MiscExpense, BusinessSettings, JobStatus, STOCK_CATEGORIES } from '../../types';
 import { calculateJobTotals, formatCurrency } from '../../lib/calculations';
 import { parseFieldNotesWithAI } from '../../lib/ai';
 
@@ -40,7 +40,7 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
   const [isAddingNewStock, setIsAddingNewStock] = useState<boolean>(false);
   const [newStockName, setNewStockName] = useState('');
   const [newStockSku, setNewStockSku] = useState('');
-  const [newStockCategory, setNewStockCategory] = useState('Aircon & Cooling');
+  const [newStockCategory, setNewStockCategory] = useState<string>(STOCK_CATEGORIES[0]);
   const [newStockCost, setNewStockCost] = useState<number>(100);
   const [newStockSell, setNewStockSell] = useState<number>(200);
   const [newStockQty, setNewStockQty] = useState<number>(5);
@@ -735,13 +735,11 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                         onChange={(e) => setNewStockCategory(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-800 text-white p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
                       >
-                        <option value="Aircon & Cooling">Aircon & Cooling</option>
-                        <option value="Electrical">Electrical</option>
-                        <option value="Solar & Inverters">Solar & Inverters</option>
-                        <option value="Plumbing">Plumbing</option>
-                        <option value="Gas & Refrigerant">Gas & Refrigerant</option>
-                        <option value="Hardware & Fasteners">Hardware & Fasteners</option>
-                        <option value="Tools & Spares">Tools & Spares</option>
+                        {STOCK_CATEGORIES.map((cat, idx) => (
+                          <option key={cat} value={cat}>
+                            {idx + 1}. {cat}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>

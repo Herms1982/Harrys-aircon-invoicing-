@@ -124,7 +124,7 @@ ${JSON.stringify(availableStock || [])}
 
 Rules:
 1. Extract client name, phone number, and physical address if mentioned.
-2. Create a concise job title and select appropriate category: "Aircon", "Electrical", "Solar", "Refrigeration", "Maintenance", "Repair", "Installation", "Inspection".
+2. Create a concise job title and select appropriate category strictly from: "Electrical", "Solar", "Refrigeration", "Air Conditioning", "Security and CCTV".
 3. Provide a clear work summary description.
 4. Match mentioned materials to item IDs in the parts catalog if possible. Return matched or new parts with quantity used and realistic unit price in South African Rand (ZAR).
 5. Estimate labor hours based on description.
@@ -223,7 +223,7 @@ TASK:
    - "unitCost": Net unit cost price in South African Rand (ZAR) before VAT/tax (or totalLineCost / quantity).
    - "totalCost": Line total cost amount.
    - "suggestedName": Clean, professional, standardized trade name for South African trades (e.g. "16A Single Pole Circuit Breaker (C-Curve 3kA)").
-   - "suggestedCategory": Choose best from: "Electrical", "Aircon", "Solar", "Refrigeration", "Consumables", "Tools & Hardware", "Cables & Wiring", "Safety & Security".
+   - "suggestedCategory": Choose strictly from the 5 standard categories: "Electrical", "Solar", "Refrigeration", "Air Conditioning", "Security and CCTV".
    - "suggestedUnit": Unit of measure (e.g. "pcs", "m", "roll", "box", "kg", "cylinder", "set", "pack").
    - "suggestedSellPrice": Suggested retail sell price to clients (calculated as unitCost * 1.35 for a standard 35% trade markup, rounded to a clean number).
    - "matchedStockId": If this invoice item matches an item in the EXISTING INVENTORY CATALOG above (even if named slightly differently by the supplier), provide that exact catalog item 'id'. If it is a new item not in catalog, leave as null or empty string.

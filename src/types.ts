@@ -1,5 +1,15 @@
 export type JobStatus = 'Draft' | 'Invoiced' | 'Paid' | 'Cancelled';
 
+export const STOCK_CATEGORIES = [
+  'Electrical',
+  'Solar',
+  'Refrigeration',
+  'Air Conditioning',
+  'Security and CCTV',
+] as const;
+
+export type StockCategory = typeof STOCK_CATEGORIES[number];
+
 export interface StockItem {
   id: string;
   sku: string;

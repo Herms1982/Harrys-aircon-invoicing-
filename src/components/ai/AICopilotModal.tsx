@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Sparkles, X, Wrench, FileText, Send, Check, Copy, ArrowRight, Loader2, Bot, AlertCircle } from 'lucide-react';
-import { StockItem, CalloutJob, BusinessSettings, Client } from '../../types';
+import { StockItem, CalloutJob, BusinessSettings, Client, STOCK_CATEGORIES } from '../../types';
 import { fetchAIDiagnosis, parseFieldNotesWithAI, generateAICustomerMessage, AIDiagnosisResult, AIParsedNoteResult } from '../../lib/ai';
 
 interface AICopilotModalProps {
@@ -33,7 +33,7 @@ export const AICopilotModal: React.FC<AICopilotModalProps> = ({
   const [parserError, setParserError] = useState<string | null>(null);
 
   // Diagnose State
-  const [category, setCategory] = useState('Aircon & Cooling');
+  const [category, setCategory] = useState<string>('Air Conditioning');
   const [equipment, setEquipment] = useState('Inverter Split System 12000 BTU');
   const [symptomInput, setSymptomInput] = useState('');
   const [isDiagnosing, setIsDiagnosing] = useState(false);
@@ -304,10 +304,11 @@ export const AICopilotModal: React.FC<AICopilotModalProps> = ({
                       onChange={(e) => setCategory(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-800 text-xs text-white p-2.5 rounded-xl"
                     >
-                      <option value="Aircon & Cooling">Aircon & Cooling</option>
-                      <option value="Solar & Inverters">Solar & Inverters</option>
-                      <option value="Electrical & DB Board">Electrical & DB Board</option>
-                      <option value="Refrigeration">Refrigeration</option>
+                      {STOCK_CATEGORIES.map((cat, idx) => (
+                        <option key={cat} value={cat}>
+                          {idx + 1}. {cat}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
