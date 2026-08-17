@@ -163,7 +163,10 @@ export function getStoredCallouts(): CalloutJob[] {
     const data = localStorage.getItem(KEYS.CALLOUTS);
     if (!data) return [];
     const parsed: CalloutJob[] = JSON.parse(data);
-    const cleaned = parsed.filter((item) => !isDemoId(item.id));
+    const cleaned = parsed.filter((item) => !isDemoId(item.id)).map((job) => ({
+      ...job,
+      documentType: job.documentType || (job.status === 'Quote' ? 'quote' : 'invoice'),
+    }));
     if (cleaned.length !== parsed.length) {
       saveStoredCallouts(cleaned);
     }
@@ -219,6 +222,18 @@ export function getStoredSettings(): BusinessSettings {
         settings.accountNumber = settings.accountNumber || INITIAL_SETTINGS.accountNumber;
         settings.bankName = settings.bankName || INITIAL_SETTINGS.bankName;
         settings.branchCode = settings.branchCode || INITIAL_SETTINGS.branchCode;
+        updated = true;
+      }
+      if (!settings.nextQuoteNumber) {
+        settings.nextQuoteNumber = INITIAL_SETTINGS.nextQuoteNumber || 101;
+        updated = true;
+      }
+      if (!settings.defaultQuoteValidityDays) {
+        settings.defaultQuoteValidityDays = INITIAL_SETTINGS.defaultQuoteValidityDays || 30;
+        updated = true;
+      }
+      if (!settings.defaultQuoteTerms) {
+        settings.defaultQuoteTerms = INITIAL_SETTINGS.defaultQuoteTerms;
         updated = true;
       }
       if (updated) {

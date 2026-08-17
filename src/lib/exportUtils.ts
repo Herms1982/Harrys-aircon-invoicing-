@@ -161,7 +161,7 @@ export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings):
   // Left Box: Billed To (White background with blue border)
   doc.setDrawColor(191, 219, 254); // blue-200
   doc.setFillColor(248, 250, 255); // soft light blue-white
-  doc.roundedRect(14, y, 90, 32, 2.5, 2.5, 'FD');
+  doc.roundedRect(14, y, 90, 36, 2.5, 2.5, 'FD');
 
   doc.setTextColor(30, 58, 138); // royal-blue
   doc.setFontSize(8);
@@ -169,18 +169,26 @@ export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings):
   doc.text('BILLED TO:', 18, y + 6);
 
   doc.setTextColor(15, 23, 42);
-  doc.setFontSize(11);
+  doc.setFontSize(10.5);
   doc.setFont('helvetica', 'bold');
   doc.text(job.clientName || 'Valued Customer', 18, y + 13);
 
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(51, 65, 85);
-  doc.text(job.clientPhone || 'No Phone', 18, y + 19);
-  doc.text(job.clientAddress || 'No Address', 18, y + 25);
+  if (job.clientEmail) {
+    doc.setTextColor(30, 58, 138);
+    doc.text(`Email: ${job.clientEmail}`, 18, y + 19);
+    doc.setTextColor(51, 65, 85);
+    doc.text(`Phone: ${job.clientPhone || 'No Phone'}`, 18, y + 24.5);
+    doc.text(`Address: ${job.clientAddress || 'No Address'}`, 18, y + 30);
+  } else {
+    doc.text(`Phone: ${job.clientPhone || 'No Phone'}`, 18, y + 19);
+    doc.text(`Address: ${job.clientAddress || 'No Address'}`, 18, y + 25);
+  }
 
   // Right Box: Invoice Meta
-  doc.roundedRect(108, y, 88, 32, 2.5, 2.5, 'FD');
+  doc.roundedRect(108, y, 88, 36, 2.5, 2.5, 'FD');
 
   doc.setTextColor(30, 58, 138);
   doc.setFontSize(8);
@@ -194,7 +202,7 @@ export function buildInvoicePDFDoc(job: CalloutJob, settings: BusinessSettings):
   doc.text(`Job: ${job.jobTitle}`, 112, y + 19);
   doc.text(`Status: ${job.status.toUpperCase()}`, 112, y + 25);
 
-  y += 38;
+  y += 42;
 
   // Work Done Description
   if (job.workDone) {
@@ -471,7 +479,372 @@ Thank you for your business!`;
   }
 
   // 4. Fallback: Email
-  const mailUrl = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(shareText)}`;
+  const mailUrl = `mailto:${job.clientEmail || ''}?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(shareText)}`;
+  window.open(mailUrl, '_blank');
+  return { shared: true, method: 'email' };
+}
+
+/**
+ * Build jsPDF instance and metadata for an Official Quotation / Estimate
+ */
+export function buildQuotePDFDoc(job: CalloutJob, settings: BusinessSettings): { doc: jsPDF; filename: string; title: string } {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const totals = calculateJobTotals(job);
+
+  // Royal Blue & Golden Amber Palette
+  const royalBlue = [30, 58, 138]; // #1e3a8a
+  const brightYellow = [250, 204, 21]; // #facc15
+  const amberGold = [217, 119, 6]; // #d97706
+
+  const quoteNumber = job.quoteNumber || (job.invoiceNumber ? job.invoiceNumber.replace('INV', 'QUO') : `QUO-2026-001`);
+
+  // 1. Header & Business Name
+  // Top Yellow Accent Line
+  doc.setFillColor(brightYellow[0], brightYellow[1], brightYellow[2]);
+  doc.rect(0, 0, 210, 3.5, 'F');
+
+  // Main Royal Blue Header Banner
+  doc.setFillColor(royalBlue[0], royalBlue[1], royalBlue[2]);
+  doc.rect(0, 3.5, 210, 34, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text(settings.businessName || "Harrys aircon and Electrical", 14, 15);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(224, 242, 254);
+  doc.text(
+    `${settings.address || 'Pretoria, South Africa'} | Tel: ${settings.phone || '0716896139'} | ${settings.email || 'service@harrysaircon.co.za'}`,
+    14,
+    21.5
+  );
+
+  // Slogan Banner
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bolditalic');
+  doc.setTextColor(brightYellow[0], brightYellow[1], brightYellow[2]);
+  const sloganText = settings.slogan || "From Electrical, Solar, Security, CCTV, Refrigeration and Air Conditioning — We've Got You Covered";
+  doc.text(sloganText, 14, 28);
+
+  // Quotation Title & Badge in Header
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(brightYellow[0], brightYellow[1], brightYellow[2]);
+  doc.text('QUOTATION', 196, 17, { align: 'right' });
+
+  doc.setFontSize(10.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text(`#${quoteNumber}`, 196, 25, { align: 'right' });
+
+  // 2. Client & Quote Metadata
+  let y = 44;
+
+  // Left Box: Quoted To (White background with blue border)
+  doc.setDrawColor(191, 219, 254);
+  doc.setFillColor(248, 250, 255);
+  doc.roundedRect(14, y, 90, 36, 2.5, 2.5, 'FD');
+
+  doc.setTextColor(30, 58, 138);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('QUOTED TO:', 18, y + 6);
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(10.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text(job.clientName || 'Valued Customer', 18, y + 13);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  if (job.clientEmail) {
+    doc.setTextColor(30, 58, 138);
+    doc.text(`Email: ${job.clientEmail}`, 18, y + 19);
+    doc.setTextColor(51, 65, 85);
+    doc.text(`Phone: ${job.clientPhone || 'No Phone'}`, 18, y + 24.5);
+    doc.text(`Address: ${job.clientAddress || 'No Address'}`, 18, y + 30);
+  } else {
+    doc.text(`Phone: ${job.clientPhone || 'No Phone'}`, 18, y + 19);
+    doc.text(`Address: ${job.clientAddress || 'No Address'}`, 18, y + 25);
+  }
+
+  // Right Box: Quote Meta & Validity
+  doc.roundedRect(108, y, 88, 36, 2.5, 2.5, 'FD');
+
+  doc.setTextColor(30, 58, 138);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('QUOTATION DETAILS:', 112, y + 6);
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Date Issued: ${job.date}`, 112, y + 13);
+  doc.text(`Valid Until: ${job.validUntil || '30 Days from issue'}`, 112, y + 18.5);
+  doc.text(`Project: ${job.jobTitle}`, 112, y + 24);
+  doc.setTextColor(30, 58, 138);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Status: ${(job.quoteStatus || job.status || 'QUOTED').toUpperCase()}`, 112, y + 29.5);
+
+  y += 42;
+
+  // Work Scope / Project Description
+  if (job.workDone) {
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 58, 138);
+    doc.text('SCOPE OF WORK / ESTIMATE SPECIFICATIONS:', 14, y);
+    y += 5;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 23, 42);
+    const splitDesc = doc.splitTextToSize(job.workDone, 180);
+    doc.text(splitDesc, 14, y);
+    y += splitDesc.length * 4.5 + 4;
+  }
+
+  // 3. Itemized Table
+  const tableRows: Array<[string, string, string, string, string]> = [];
+
+  if (job.kmTravelled > 0) {
+    tableRows.push([
+      `Travel / Callout (${job.kmTravelled} km round trip)`,
+      '1',
+      formatCurrency(job.travelCharge, settings.currencySymbol),
+      '0%',
+      formatCurrency(job.travelCharge, settings.currencySymbol),
+    ]);
+  }
+
+  if (job.hoursOnSite > 0) {
+    tableRows.push([
+      `Estimated Labor & Technical Installation (${job.hoursOnSite} hrs @ ${formatCurrency(job.hourlyRateClient, settings.currencySymbol)}/hr)`,
+      `${job.hoursOnSite}`,
+      formatCurrency(job.hourlyRateClient, settings.currencySymbol),
+      '0%',
+      formatCurrency(job.laborCharge, settings.currencySymbol),
+    ]);
+  }
+
+  job.stockItems.forEach((stk) => {
+    tableRows.push([
+      stk.name,
+      `${stk.quantity} ${stk.unit}`,
+      formatCurrency(stk.unitSellPrice, settings.currencySymbol),
+      '0%',
+      formatCurrency(stk.quantity * stk.unitSellPrice, settings.currencySymbol),
+    ]);
+  });
+
+  job.miscExpenses.forEach((m) => {
+    tableRows.push([
+      m.description,
+      '1',
+      formatCurrency(m.chargeAmount, settings.currencySymbol),
+      '0%',
+      formatCurrency(m.chargeAmount, settings.currencySymbol),
+    ]);
+  });
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Description / Materials & Services', 'Qty', 'Unit Price', 'Tax', 'Estimated Total']],
+    body: tableRows,
+    theme: 'grid',
+    headStyles: {
+      fillColor: royalBlue as [number, number, number],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 9,
+    },
+    bodyStyles: {
+      fontSize: 8.5,
+      textColor: [15, 23, 42],
+    },
+    columnStyles: {
+      0: { cellWidth: 90 },
+      1: { cellWidth: 20, halign: 'center' },
+      2: { cellWidth: 25, halign: 'right' },
+      3: { cellWidth: 20, halign: 'center' },
+      4: { cellWidth: 27, halign: 'right' },
+    },
+    margin: { left: 14, right: 14 },
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY + 8;
+  let totalY = finalY;
+
+  // 4. Totals Block
+  doc.setFillColor(248, 250, 255);
+  doc.setDrawColor(191, 219, 254);
+  doc.roundedRect(118, totalY, 78, 38, 3, 3, 'FD');
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+
+  doc.text('Subtotal:', 122, totalY + 8);
+  doc.text(formatCurrency(totals.subtotal, settings.currencySymbol), 192, totalY + 8, { align: 'right' });
+
+  if (job.discountAmount > 0) {
+    doc.text('Discount / Concession:', 122, totalY + 14);
+    doc.text(`-${formatCurrency(job.discountAmount, settings.currencySymbol)}`, 192, totalY + 14, { align: 'right' });
+  }
+
+  if (job.taxRate > 0) {
+    doc.text(`VAT (${job.taxRate}%):`, 122, totalY + 20);
+    doc.text(formatCurrency(totals.taxTotal, settings.currencySymbol), 192, totalY + 20, { align: 'right' });
+  }
+
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 58, 138);
+  doc.text('QUOTED TOTAL:', 122, totalY + 30);
+  doc.setTextColor(180, 83, 9);
+  doc.text(formatCurrency(totals.totalInvoicePrice, settings.currencySymbol), 192, totalY + 30, { align: 'right' });
+
+  // 5. Quote Terms & Acceptance Block
+  let termsY = totalY + 42;
+  if (termsY > 235) {
+    doc.addPage();
+    termsY = 20;
+  }
+
+  // Quote Terms Box
+  doc.setDrawColor(234, 179, 8);
+  doc.setFillColor(254, 252, 232);
+  doc.roundedRect(14, termsY, 182, 44, 2.5, 2.5, 'FD');
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 58, 138);
+  doc.text('TERMS & CONDITIONS OF QUOTATION:', 18, termsY + 6);
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(51, 65, 85);
+  const termsText = job.quoteNotes || settings.defaultQuoteTerms || "Quotation valid for 30 days. All workmanship carries a 6-month warranty. Parts & equipment covered by manufacturer warranty. 50% deposit required for special equipment orders.";
+  const splitTerms = doc.splitTextToSize(termsText, 174);
+  doc.text(splitTerms, 18, termsY + 12);
+
+  // Acceptance Signature Lines
+  const sigY = termsY + 28;
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.3);
+  doc.line(18, sigY + 8, 80, sigY + 8);
+  doc.line(90, sigY + 8, 125, sigY + 8);
+  doc.line(135, sigY + 8, 188, sigY + 8);
+
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text('Client Acceptance Signature', 18, sigY + 12);
+  doc.text('Date', 90, sigY + 12);
+  doc.text('Print Full Name', 135, sigY + 12);
+
+  const filename = `Quotation_${quoteNumber.replace(/[^a-zA-Z0-9_-]/g, '')}.pdf`;
+  const title = `Quotation ${quoteNumber}`;
+  return { doc, filename, title };
+}
+
+/**
+ * Generate and download a PDF for a Quotation
+ */
+export async function downloadQuotePDF(job: CalloutJob, settings: BusinessSettings): Promise<PDFSaveResult> {
+  const { doc, filename, title } = buildQuotePDFDoc(job, settings);
+  return await savePDFDocument(doc, filename, title);
+}
+
+/**
+ * Share Quotation PDF directly via Web Share API or Capacitor / WhatsApp / Email
+ */
+export async function shareQuotePDF(job: CalloutJob, settings: BusinessSettings): Promise<ShareResult> {
+  const { doc, filename } = buildQuotePDFDoc(job, settings);
+  const pdfBlob = doc.output('blob');
+  const quoteNumber = job.quoteNumber || (job.invoiceNumber ? job.invoiceNumber.replace('INV', 'QUO') : `QUO-2026-001`);
+  const title = `Quotation ${quoteNumber} - ${settings.businessName}`;
+  const shareText = `Hi ${job.clientName || 'Valued Client'},
+
+Please find attached your official Quotation ${quoteNumber} for ${formatCurrency(job.totalInvoicePrice, settings.currencySymbol)} from ${settings.businessName}.
+
+*Quotation Details:*
+• Project: ${job.jobTitle}
+• Date: ${job.date}
+• Valid Until: ${job.validUntil || '30 days from date'}
+• Total Estimate: ${formatCurrency(job.totalInvoicePrice, settings.currencySymbol)}
+
+Please reply to accept this quote or contact Harry at ${settings.phone || '0716896139'} if you have any questions.
+
+Thank you!`;
+
+  // 1. Capacitor Native Share
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await Filesystem.requestPermissions();
+      const pdfDataUri = doc.output('datauristring');
+      const base64Data = pdfDataUri.split(',')[1];
+      const result = await Filesystem.writeFile({
+        path: filename,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+
+      await Share.share({
+        title,
+        text: shareText,
+        url: result.uri,
+        dialogTitle: `Share ${filename} via...`,
+      });
+      return { shared: true, method: 'capacitor' };
+    } catch (nativeErr) {
+      console.warn('Capacitor native share error:', nativeErr);
+    }
+  }
+
+  // 2. Web Share API with PDF File
+  if (typeof navigator !== 'undefined' && navigator.share) {
+    try {
+      const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        await navigator.share({
+          files: [pdfFile],
+          title,
+          text: shareText,
+        });
+        return { shared: true, method: 'web_share' };
+      } else if (navigator.canShare && navigator.canShare({ title, text: shareText })) {
+        await navigator.share({
+          title,
+          text: shareText,
+        });
+        return { shared: true, method: 'web_share' };
+      }
+    } catch (shareErr: any) {
+      if (shareErr.name === 'AbortError') {
+        return { shared: false, method: 'web_share', message: 'User canceled share' };
+      }
+      console.warn('Web Share API error:', shareErr);
+    }
+  }
+
+  // 3. Direct Fallback: WhatsApp
+  if (job.clientPhone) {
+    const cleanPhone = job.clientPhone.replace(/[^0-9+]/g, '');
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(shareText)}`;
+    window.open(waUrl, '_blank');
+    return { shared: true, method: 'whatsapp' };
+  }
+
+  // 4. Fallback: Email directly to client email
+  const mailUrl = `mailto:${job.clientEmail || ''}?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(shareText)}`;
   window.open(mailUrl, '_blank');
   return { shared: true, method: 'email' };
 }

@@ -25,6 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const tabTitles: Record<string, string> = {
     jobs: 'Callout Jobs & Invoices',
+    quotes: 'Quotations & Client Estimates',
     inventory: 'Stock & Inventory',
     clients: 'Client Directory',
     analytics: 'Profit & Financial Analytics',

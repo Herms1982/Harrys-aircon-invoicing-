@@ -4,6 +4,8 @@ import { BottomNav } from './components/BottomNav';
 import { JobList } from './components/jobs/JobList';
 import { JobFormModal } from './components/jobs/JobFormModal';
 import { InvoiceViewModal } from './components/jobs/InvoiceViewModal';
+import { QuoteList } from './components/quotes/QuoteList';
+import { QuoteViewModal } from './components/quotes/QuoteViewModal';
 import { InventoryList } from './components/inventory/InventoryList';
 import { StockFormModal } from './components/inventory/StockFormModal';
 import { StockLogModal } from './components/inventory/StockLogModal';
@@ -31,7 +33,7 @@ import {
   handleStockForJobStatusChange,
 } from './lib/storage';
 
-import { StockItem, Client, CalloutJob, BusinessSettings, StockLog, JobStatus } from './types';
+import { StockItem, Client, CalloutJob, BusinessSettings, StockLog, JobStatus, DocumentType, QuoteStatus } from './types';
 import { STANDARD_ELECTRICAL_CATALOG } from './data/initialData';
 import { ShieldCheck } from 'lucide-react';
 
@@ -51,9 +53,11 @@ export default function App() {
 
   // Modals state
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
+  const [jobModalDefaultType, setJobModalDefaultType] = useState<DocumentType>('invoice');
   const [editingJob, setEditingJob] = useState<CalloutJob | null>(null);
 
   const [viewingInvoiceJob, setViewingInvoiceJob] = useState<CalloutJob | null>(null);
+  const [viewingQuoteJob, setViewingQuoteJob] = useState<CalloutJob | null>(null);
 
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
   const [editingStockItem, setEditingStockItem] = useState<StockItem | null>(null);
@@ -152,23 +156,32 @@ export default function App() {
     }, 4500);
   };
 
-  // Low stock & unpaid count
+  // Low stock & unpaid count & pending quotes
   const lowStockCount = stock.filter((s) => s.quantity <= s.minQuantity).length;
-  const unpaidCount = callouts.filter((j) => j.status === 'Invoiced').length;
+  const unpaidCount = callouts.filter((j) => (j.documentType || 'invoice') === 'invoice' && j.status === 'Invoiced').length;
+  const pendingQuotesCount = callouts.filter(
+    (j) => j.documentType === 'quote' && (j.quoteStatus === 'Draft' || j.quoteStatus === 'Sent' || !j.quoteStatus)
+  ).length;
 
-  // Handler: Save or Update Job
+  // Handler: Save or Update Job (Invoice or Quote)
   const handleSaveJob = (jobToSave: CalloutJob, newClient?: Client) => {
     // If a new client was created inline
     if (newClient) {
       setClients((prev) => [newClient, ...prev]);
     }
 
-    // Determine stock deduction logic
-    const { updatedJob, updatedStock, updatedLogs, message } =
-      handleStockForJobStatusChange(jobToSave, jobToSave.status, stock, logs);
+    // Determine stock deduction logic (quotes do NOT deduct stock unless accepted/invoiced)
+    const isQuote = jobToSave.documentType === 'quote';
+    let updatedJob = { ...jobToSave };
+    let message: string | undefined;
 
-    setStock(updatedStock);
-    setLogs(updatedLogs);
+    if (!isQuote) {
+      const stockResult = handleStockForJobStatusChange(jobToSave, jobToSave.status, stock, logs);
+      updatedJob = stockResult.updatedJob;
+      setStock(stockResult.updatedStock);
+      setLogs(stockResult.updatedLogs);
+      message = stockResult.message;
+    }
 
     // Save job into array
     setCallouts((prev) => {
@@ -183,17 +196,21 @@ export default function App() {
     setIsJobModalOpen(false);
     setEditingJob(null);
 
-    if (message) {
-      showToast(message);
+    if (isQuote) {
+      showToast(`Quotation ${updatedJob.quoteNumber || 'Saved'} generated successfully!`);
+      setViewingQuoteJob(updatedJob);
     } else {
-      showToast(`Callout ${updatedJob.invoiceNumber} saved!`);
+      if (message) {
+        showToast(message);
+      } else {
+        showToast(`Callout ${updatedJob.invoiceNumber} saved!`);
+      }
+      // Auto open invoice preview
+      setViewingInvoiceJob(updatedJob);
     }
-
-    // Auto open invoice preview
-    setViewingInvoiceJob(updatedJob);
   };
 
-  // Handler: Delete Job
+  // Handler: Delete Job or Quote
   const handleDeleteJob = (jobId: string) => {
     const job = callouts.find((j) => j.id === jobId);
     if (!job) return;
@@ -208,7 +225,63 @@ export default function App() {
     if (viewingInvoiceJob?.id === jobId) {
       setViewingInvoiceJob(null);
     }
-    showToast(`Deleted callout ${job.invoiceNumber}.`);
+    if (viewingQuoteJob?.id === jobId) {
+      setViewingQuoteJob(null);
+    }
+    showToast(`Deleted ${job.documentType === 'quote' ? 'quotation' : 'callout'} ${job.quoteNumber || job.invoiceNumber}.`);
+  };
+
+  // Handler: Change quote status
+  const handleQuoteStatusChange = (job: CalloutJob, newQuoteStatus: QuoteStatus) => {
+    const updated: CalloutJob = {
+      ...job,
+      quoteStatus: newQuoteStatus,
+    };
+
+    setCallouts((prev) => prev.map((j) => (j.id === updated.id ? updated : j)));
+
+    if (viewingQuoteJob && viewingQuoteJob.id === updated.id) {
+      setViewingQuoteJob(updated);
+    }
+
+    showToast(`Quotation ${job.quoteNumber || job.id} marked as ${newQuoteStatus}.`);
+  };
+
+  // Handler: Convert Quotation to Official Tax Invoice
+  const handleConvertQuoteToInvoice = (quoteJob: CalloutJob) => {
+    const nextInv = settings.nextInvoiceNumber || 101;
+    const newInvoiceNumber = `INV-2026-${nextInv}`;
+
+    const convertedJob: CalloutJob = {
+      ...quoteJob,
+      documentType: 'invoice',
+      invoiceNumber: newInvoiceNumber,
+      status: 'Invoiced',
+      quoteStatus: 'Accepted',
+      date: new Date().toISOString().split('T')[0],
+    };
+
+    // Deduct stock for the new active invoice
+    const { updatedJob, updatedStock, updatedLogs, message } =
+      handleStockForJobStatusChange(convertedJob, 'Invoiced', stock, logs);
+
+    setStock(updatedStock);
+    setLogs(updatedLogs);
+
+    setCallouts((prev) => prev.map((j) => (j.id === quoteJob.id ? updatedJob : j)));
+
+    // Increment next invoice number
+    setSettings((prev) => ({
+      ...prev,
+      nextInvoiceNumber: nextInv + 1,
+    }));
+
+    if (viewingQuoteJob?.id === quoteJob.id) {
+      setViewingQuoteJob(null);
+    }
+
+    setViewingInvoiceJob(updatedJob);
+    showToast(message || `🎉 Quote converted to Tax Invoice ${newInvoiceNumber}! Stock deducted.`);
   };
 
   // Handler: Change job status from list or invoice view (e.g. Mark Paid)
@@ -469,15 +542,38 @@ export default function App() {
                 settings={settings}
                 onNewJob={() => {
                   setEditingJob(null);
+                  setJobModalDefaultType('invoice');
                   setIsJobModalOpen(true);
                 }}
                 onViewInvoice={(job) => setViewingInvoiceJob(job)}
                 onEditJob={(job) => {
                   setEditingJob(job);
+                  setJobModalDefaultType(job.documentType || 'invoice');
                   setIsJobModalOpen(true);
                 }}
                 onDeleteJob={handleDeleteJob}
                 onStatusChange={handleJobStatusChange}
+              />
+            )}
+
+            {activeTab === 'quotes' && (
+              <QuoteList
+                jobs={callouts}
+                settings={settings}
+                onNewQuote={() => {
+                  setEditingJob(null);
+                  setJobModalDefaultType('quote');
+                  setIsJobModalOpen(true);
+                }}
+                onViewQuote={(job) => setViewingQuoteJob(job)}
+                onEditQuote={(job) => {
+                  setEditingJob(job);
+                  setJobModalDefaultType('quote');
+                  setIsJobModalOpen(true);
+                }}
+                onDeleteQuote={handleDeleteJob}
+                onConvertToInvoice={handleConvertQuoteToInvoice}
+                onStatusChange={handleQuoteStatusChange}
               />
             )}
 
@@ -548,6 +644,7 @@ export default function App() {
             setActiveTab={setActiveTab}
             lowStockCount={lowStockCount}
             unpaidCount={unpaidCount}
+            pendingQuotesCount={pendingQuotesCount}
           />
         </div>
       </div>
@@ -555,6 +652,7 @@ export default function App() {
       {/* MODALS */}
       <JobFormModal
         initialJob={editingJob}
+        defaultDocumentType={jobModalDefaultType}
         clients={clients}
         stockItems={stock}
         settings={settings}
@@ -576,6 +674,23 @@ export default function App() {
         onEditJob={(job) => {
           setViewingInvoiceJob(null);
           setEditingJob(job);
+          setJobModalDefaultType('invoice');
+          setIsJobModalOpen(true);
+        }}
+        onOpenAICopilot={() => setIsAICopilotOpen(true)}
+      />
+
+      <QuoteViewModal
+        job={viewingQuoteJob}
+        settings={settings}
+        isOpen={!!viewingQuoteJob}
+        onClose={() => setViewingQuoteJob(null)}
+        onConvertToInvoice={handleConvertQuoteToInvoice}
+        onStatusChange={handleQuoteStatusChange}
+        onEditJob={(job) => {
+          setViewingQuoteJob(null);
+          setEditingJob(job);
+          setJobModalDefaultType('quote');
           setIsJobModalOpen(true);
         }}
         onOpenAICopilot={() => setIsAICopilotOpen(true)}

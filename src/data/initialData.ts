@@ -16,6 +16,9 @@ export const INITIAL_SETTINGS: BusinessSettings = {
   defaultHourlyCostInternal: 250.0,
   defaultTaxRate: 15.0, // 15% VAT in South Africa
   nextInvoiceNumber: 1001,
+  nextQuoteNumber: 101,
+  defaultQuoteValidityDays: 30,
+  defaultQuoteTerms: "Quotation is valid for 30 days. All workmanship carries a 6-month guarantee. Parts and materials are covered under manufacturer warranty. 50% deposit required on equipment orders exceeding R5,000.",
   bankName: 'First National Bank (FNB)',
   accountType: 'Current Business',
   accountName: 'Harrys aircon and Electrical',

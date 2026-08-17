@@ -38,6 +38,7 @@ export const ClientList: React.FC<ClientListProps> = ({
     (c) =>
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (c.company && c.company.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (c.email && c.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (c.phone && c.phone.includes(searchTerm)) ||
       (c.address && c.address.toLowerCase().includes(searchTerm.toLowerCase()))
   );

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Fuel, Clock, Package, DollarSign, Calculator, UserPlus, AlertTriangle, ShieldCheck, Sparkles, Loader2 } from 'lucide-react';
-import { CalloutJob, Client, StockItem, UsedStockItem, MiscExpense, BusinessSettings, JobStatus, STOCK_CATEGORIES } from '../../types';
+import { X, Plus, Trash2, Fuel, Clock, Package, DollarSign, Calculator, UserPlus, AlertTriangle, ShieldCheck, Sparkles, Loader2, Mail, Phone, MapPin, FileSpreadsheet, Send } from 'lucide-react';
+import { CalloutJob, Client, StockItem, UsedStockItem, MiscExpense, BusinessSettings, JobStatus, STOCK_CATEGORIES, DocumentType, QuoteStatus } from '../../types';
 import { calculateJobTotals, formatCurrency } from '../../lib/calculations';
 import { parseFieldNotesWithAI } from '../../lib/ai';
 
 interface JobFormModalProps {
   initialJob?: CalloutJob | null;
+  defaultDocumentType?: DocumentType;
   clients: Client[];
   stockItems: StockItem[];
   settings: BusinessSettings;
@@ -17,6 +18,7 @@ interface JobFormModalProps {
 
 export const JobFormModal: React.FC<JobFormModalProps> = ({
   initialJob,
+  defaultDocumentType = 'invoice',
   clients,
   stockItems,
   settings,
@@ -27,14 +29,34 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  // Document Type Mode ('invoice' | 'quote')
+  const [documentType, setDocumentType] = useState<DocumentType>(
+    initialJob?.documentType || defaultDocumentType
+  );
+
   // Selected client or quick client creation state
   const [selectedClientId, setSelectedClientId] = useState<string>(
     initialJob?.clientId || (clients.length > 0 ? clients[0].id : 'new')
   );
   const [isCreatingClient, setIsCreatingClient] = useState<boolean>(clients.length === 0);
   const [newClientName, setNewClientName] = useState('');
+  const [newClientEmail, setNewClientEmail] = useState('');
   const [newClientPhone, setNewClientPhone] = useState('');
   const [newClientAddress, setNewClientAddress] = useState('');
+
+  // When client changes from dropdown
+  const currentClient = clients.find((c) => c.id === selectedClientId);
+
+  // Client Email state (editable for both existing and new clients)
+  const [clientEmail, setClientEmail] = useState<string>(
+    initialJob?.clientEmail || currentClient?.email || ''
+  );
+
+  useEffect(() => {
+    if (currentClient && !isCreatingClient) {
+      setClientEmail(currentClient.email || '');
+    }
+  }, [selectedClientId, isCreatingClient]);
 
   // Inline new stock item state
   const [isAddingNewStock, setIsAddingNewStock] = useState<boolean>(false);
@@ -50,12 +72,27 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
   const [invoiceNumber, setInvoiceNumber] = useState(
     initialJob?.invoiceNumber || `INV-2026-${settings.nextInvoiceNumber}`
   );
+  const [quoteNumber, setQuoteNumber] = useState(
+    initialJob?.quoteNumber || (initialJob?.invoiceNumber ? initialJob.invoiceNumber.replace('INV', 'QUO') : `QUO-2026-${settings.nextQuoteNumber || 101}`)
+  );
   const [date, setDate] = useState(
     initialJob?.date || new Date().toISOString().split('T')[0]
   );
+  const [validUntil, setValidUntil] = useState<string>(
+    initialJob?.validUntil || (() => {
+      const d = new Date();
+      d.setDate(d.getDate() + (settings.defaultQuoteValidityDays || 30));
+      return d.toISOString().split('T')[0];
+    })()
+  );
+  const [quoteNotes, setQuoteNotes] = useState<string>(
+    initialJob?.quoteNotes || settings.defaultQuoteTerms || ''
+  );
   const [status, setStatus] = useState<JobStatus>(initialJob?.status || 'Invoiced');
+  const [quoteStatus, setQuoteStatus] = useState<QuoteStatus>(initialJob?.quoteStatus || 'Draft');
+
   const [jobTitle, setJobTitle] = useState(
-    initialJob?.jobTitle || 'General Site Callout & Repairs'
+    initialJob?.jobTitle || (documentType === 'quote' ? 'Quotation: Air Conditioning / Electrical Installation' : 'General Site Callout & Repairs')
   );
   const [workDone, setWorkDone] = useState(initialJob?.workDone || '');
 
@@ -138,9 +175,6 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
       setIsAiParsing(false);
     }
   };
-
-  // When client changes from dropdown
-  const currentClient = clients.find((c) => c.id === selectedClientId);
 
   // Live total calculations
   const totals = calculateJobTotals({
@@ -270,6 +304,7 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
     let clientName = currentClient ? currentClient.name : newClientName;
     let clientPhone = currentClient ? currentClient.phone : newClientPhone;
     let clientAddress = currentClient ? currentClient.address : newClientAddress;
+    let resolvedEmail = isCreatingClient ? newClientEmail.trim() : clientEmail.trim();
     let clientId = selectedClientId;
 
     let newClientObj: Client | undefined;
@@ -282,26 +317,32 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
       clientId = `cli-${Date.now()}`;
       newClientObj = {
         id: clientId,
-        name: newClientName,
-        phone: newClientPhone,
-        address: newClientAddress,
-        email: '',
+        name: newClientName.trim(),
+        phone: newClientPhone.trim(),
+        address: newClientAddress.trim(),
+        email: newClientEmail.trim(),
         createdAt: new Date().toISOString(),
       };
-      clientName = newClientName;
-      clientPhone = newClientPhone;
-      clientAddress = newClientAddress;
+      clientName = newClientName.trim();
+      clientPhone = newClientPhone.trim();
+      clientAddress = newClientAddress.trim();
     }
 
     const jobData: CalloutJob = {
       id: initialJob?.id || `job-${Date.now()}`,
-      invoiceNumber,
+      documentType,
+      invoiceNumber: documentType === 'invoice' ? invoiceNumber : (initialJob?.invoiceNumber || `INV-2026-${settings.nextInvoiceNumber}`),
+      quoteNumber: documentType === 'quote' ? quoteNumber : (initialJob?.quoteNumber || quoteNumber),
+      validUntil: documentType === 'quote' ? validUntil : undefined,
+      quoteNotes: documentType === 'quote' ? quoteNotes : undefined,
+      quoteStatus: documentType === 'quote' ? quoteStatus : undefined,
       clientId,
       clientName,
+      clientEmail: resolvedEmail,
       clientAddress,
       clientPhone,
       date,
-      status,
+      status: documentType === 'invoice' ? status : (quoteStatus === 'Accepted' ? 'Invoiced' : 'Draft'),
       jobTitle,
       workDone,
       kmTravelled,
@@ -329,11 +370,22 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
         <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Calculator className="w-5 h-5 text-indigo-400" />
-              <span>{initialJob ? 'Edit Callout Job' : 'Log New Callout & Invoice'}</span>
+              {documentType === 'quote' ? (
+                <>
+                  <FileSpreadsheet className="w-5 h-5 text-amber-400" />
+                  <span>{initialJob ? 'Edit Quotation' : 'Create Official Quotation / Estimate'}</span>
+                </>
+              ) : (
+                <>
+                  <Calculator className="w-5 h-5 text-indigo-400" />
+                  <span>{initialJob ? 'Edit Callout Job' : 'Log New Callout & Invoice'}</span>
+                </>
+              )}
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Calculate travel, time, stock used, invoice total, and callout profit margin.
+              {documentType === 'quote'
+                ? 'Itemize pricing, client email, valid until date, and generate professional PDF quotes.'
+                : 'Calculate travel, time, stock used, invoice total, and callout profit margin.'}
             </p>
           </div>
           <button
@@ -346,11 +398,50 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-6 overflow-y-auto flex-1">
+          
+          {/* Top Document Mode Switcher */}
+          <div className="flex items-center bg-slate-950 p-1 rounded-2xl border border-slate-800">
+            <button
+              type="button"
+              onClick={() => {
+                setDocumentType('invoice');
+                if (!initialJob) {
+                  setJobTitle('General Site Callout & Repairs');
+                }
+              }}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                documentType === 'invoice'
+                  ? 'bg-indigo-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Calculator className="w-4 h-4" />
+              <span>Tax Invoice / Callout</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDocumentType('quote');
+                if (!initialJob) {
+                  setJobTitle('Quotation: Air Conditioning / Electrical Installation');
+                }
+              }}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                documentType === 'quote'
+                  ? 'bg-amber-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>Official Quotation / Estimate</span>
+            </button>
+          </div>
+
           {/* Section 1: Basic Info & Client */}
           <div className="bg-slate-950/60 p-5 rounded-3xl border border-slate-800/80 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
-                <span>1. Client & Invoice Info</span>
+                <span>1. {documentType === 'quote' ? 'Quotation & Client Info' : 'Invoice & Client Info'}</span>
               </h3>
               <button
                 type="button"
@@ -371,7 +462,7 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                 <textarea
                   value={aiRawInput}
                   onChange={(e) => setAiRawInput(e.target.value)}
-                  placeholder="e.g. Serviced aircon for Sarah Jenkins at 12 Ocean View. Replaced 2x 25A Circuit Breakers and 1L R410a Gas. Worked 2 hours on site."
+                  placeholder="e.g. Quoted 2x Inverter Aircons with 15m piping and bracket install for Peter at 45 Ridge Way. Email is peter@acme.co.za."
                   rows={2}
                   className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
                 />
@@ -405,100 +496,221 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
-                  Invoice Number
-                </label>
-                <input
-                  type="text"
-                  value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 text-indigo-400 font-mono font-bold text-xs rounded-2xl p-3 focus:outline-none focus:border-indigo-500"
-                  required
-                />
-              </div>
+            {/* Metadata Fields for Quotation vs Invoice */}
+            {documentType === 'quote' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-[10px] text-amber-400 font-bold uppercase tracking-wider mb-1">
+                    Quote Number
+                  </label>
+                  <input
+                    type="text"
+                    value={quoteNumber}
+                    onChange={(e) => setQuoteNumber(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 text-amber-400 font-mono font-bold text-xs rounded-2xl p-3 focus:outline-none focus:border-amber-500"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-2xl p-3 focus:outline-none focus:border-indigo-500"
-                  required
-                />
-              </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                    Date Issued
+                  </label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-2xl p-3 focus:outline-none focus:border-amber-500"
+                    required
+                  />
+                </div>
 
-              <div>
-                <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
-                  Job Status
-                </label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as JobStatus)}
-                  className="w-full bg-slate-900 border border-slate-800 text-indigo-400 font-semibold text-xs rounded-2xl p-3 focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="Invoiced">Invoiced (Subtracts Stock)</option>
-                  <option value="Paid">Paid (Subtracts Stock)</option>
-                  <option value="Draft">Draft (Quote / Working)</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-              </div>
-            </div>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                    Valid Until
+                  </label>
+                  <input
+                    type="date"
+                    value={validUntil}
+                    onChange={(e) => setValidUntil(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-2xl p-3 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
 
-            {/* Client selector or add client */}
-            <div className="pt-2 border-t border-slate-800/60">
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs text-slate-300 font-bold">Select Client</label>
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                    Quote Status
+                  </label>
+                  <select
+                    value={quoteStatus}
+                    onChange={(e) => setQuoteStatus(e.target.value as QuoteStatus)}
+                    className="w-full bg-slate-900 border border-slate-800 text-amber-400 font-semibold text-xs rounded-2xl p-3 focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="Draft">Draft (Working)</option>
+                    <option value="Sent">Sent to Client</option>
+                    <option value="Accepted">Accepted by Client</option>
+                    <option value="Declined">Declined</option>
+                  </select>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                    Invoice Number
+                  </label>
+                  <input
+                    type="text"
+                    value={invoiceNumber}
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 text-indigo-400 font-mono font-bold text-xs rounded-2xl p-3 focus:outline-none focus:border-indigo-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 text-white text-xs rounded-2xl p-3 focus:outline-none focus:border-indigo-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                    Job Status
+                  </label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as JobStatus)}
+                    className="w-full bg-slate-900 border border-slate-800 text-indigo-400 font-semibold text-xs rounded-2xl p-3 focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="Invoiced">Invoiced (Subtracts Stock)</option>
+                    <option value="Paid">Paid (Subtracts Stock)</option>
+                    <option value="Draft">Draft (Quote / Working)</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Client selector or add client (with provisioned space for Client Email) */}
+            <div className="pt-2 border-t border-slate-800/60 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-slate-300 font-bold">Client Information</label>
                 <button
                   type="button"
                   onClick={() => setIsCreatingClient(!isCreatingClient)}
                   className="text-xs text-indigo-400 hover:underline flex items-center gap-1 font-semibold"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
-                  <span>{isCreatingClient ? 'Choose Existing' : '+ New Client'}</span>
+                  <span>{isCreatingClient ? 'Choose Existing Client' : '+ Add New Client'}</span>
                 </button>
               </div>
 
               {!isCreatingClient ? (
-                <select
-                  value={selectedClientId}
-                  onChange={(e) => setSelectedClientId(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-2xl p-3 focus:outline-none focus:border-indigo-500"
-                >
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} {c.company ? `(${c.company})` : ''} - {c.address}
-                    </option>
-                  ))}
-                </select>
+                <div className="space-y-2">
+                  <select
+                    value={selectedClientId}
+                    onChange={(e) => setSelectedClientId(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 text-slate-200 text-xs rounded-2xl p-3 focus:outline-none focus:border-indigo-500"
+                  >
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} {c.company ? `(${c.company})` : ''} - {c.address}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Provisioned Space for Client Email & Phone */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <Mail className="w-3 h-3 text-indigo-400" />
+                        <span>Client Email Address (for sending quotes/invoices)</span>
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="e.g. client@domain.co.za"
+                        value={clientEmail}
+                        onChange={(e) => setClientEmail(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <Phone className="w-3 h-3 text-indigo-400" />
+                        <span>Client Phone</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={currentClient?.phone || ''}
+                        readOnly
+                        className="w-full bg-slate-950/60 border border-slate-800 text-xs text-slate-300 p-2.5 rounded-xl"
+                      />
+                    </div>
+                  </div>
+                </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-900 p-3 rounded-2xl border border-slate-800">
-                  <input
-                    type="text"
-                    placeholder="Client Name *"
-                    value={newClientName}
-                    onChange={(e) => setNewClientName(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 text-xs text-white p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
-                    required
-                  />
-                  <input
-                    type="text"
-                    placeholder="Phone Number"
-                    value={newClientPhone}
-                    onChange={(e) => setNewClientPhone(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 text-xs text-white p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Site / Business Address"
-                    value={newClientAddress}
-                    onChange={(e) => setNewClientAddress(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 text-xs text-white p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 bg-slate-900 p-3.5 rounded-2xl border border-slate-800">
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                      Client / Company Name *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Johnathan Smit"
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-indigo-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-indigo-400" />
+                      <span>Client Email Address (Provisioned Space)</span>
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="e.g. client@example.com"
+                      value={newClientEmail}
+                      onChange={(e) => setNewClientEmail(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="082 123 4567"
+                      value={newClientPhone}
+                      onChange={(e) => setNewClientPhone(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">
+                      Site / Physical Address
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="123 Protea Road, Pretoria"
+                      value={newClientAddress}
+                      onChange={(e) => setNewClientAddress(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2.5 rounded-xl focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -507,20 +719,36 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
             <div className="grid grid-cols-1 gap-2 pt-2">
               <input
                 type="text"
-                placeholder="Job Title (e.g., Emergency Gate Motor & Cable Repair)"
+                placeholder={documentType === 'quote' ? "Quotation Title (e.g., Supply & Install 12000 BTU Inverter Aircon)" : "Job Title (e.g., Emergency Gate Motor & Cable Repair)"}
                 value={jobTitle}
                 onChange={(e) => setJobTitle(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 text-xs font-semibold text-white rounded-2xl p-3 focus:border-indigo-500 focus:outline-none"
                 required
               />
               <textarea
-                placeholder="Work done description / site notes..."
+                placeholder={documentType === 'quote' ? "Scope of work / Quotation specifications..." : "Work done description / site notes..."}
                 value={workDone}
                 onChange={(e) => setWorkDone(e.target.value)}
                 rows={2}
                 className="w-full bg-slate-900 border border-slate-800 text-xs text-slate-200 rounded-2xl p-3 focus:border-indigo-500 focus:outline-none"
               />
             </div>
+
+            {/* Quote Terms & Conditions (Shown in quote mode) */}
+            {documentType === 'quote' && (
+              <div className="pt-2 border-t border-slate-800/60">
+                <label className="block text-[10px] text-amber-400 font-bold uppercase tracking-wider mb-1">
+                  Quotation Terms, Warranty & Validity Notes
+                </label>
+                <textarea
+                  value={quoteNotes}
+                  onChange={(e) => setQuoteNotes(e.target.value)}
+                  placeholder="e.g. Quotation valid for 30 days. 50% deposit required on approval. 12-month warranty on workmanship."
+                  rows={2}
+                  className="w-full bg-slate-900 border border-slate-800 text-xs text-slate-200 rounded-2xl p-3 focus:border-amber-500 focus:outline-none"
+                />
+              </div>
+            )}
           </div>
 
           {/* Section 2: Travelling (Fuel Cost & Charge) & Time on Site */}
@@ -1023,10 +1251,14 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl text-xs shadow-lg shadow-indigo-900/40 flex items-center gap-2 transition-all cursor-pointer border border-indigo-400/30"
+              className={`px-6 py-3 font-bold rounded-2xl text-xs shadow-lg flex items-center gap-2 transition-all cursor-pointer border ${
+                documentType === 'quote'
+                  ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/40 border-amber-400/30'
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-900/40 border-indigo-400/30'
+              }`}
             >
               <ShieldCheck className="w-4 h-4 stroke-[2.5]" />
-              <span>Save Callout & Calculate Invoice</span>
+              <span>{documentType === 'quote' ? 'Save & Generate Quotation' : 'Save Callout & Calculate Invoice'}</span>
             </button>
           </div>
         </form>

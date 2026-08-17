@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Search, Calendar, MapPin, Clock, PackageCheck, FileText, CheckCircle2, Clock3, AlertCircle, DollarSign, TrendingUp, ChevronRight, Trash2, FileDown, RefreshCw } from 'lucide-react';
+import { Plus, Search, Calendar, MapPin, Clock, PackageCheck, FileText, CheckCircle2, Clock3, AlertCircle, DollarSign, TrendingUp, ChevronRight, Trash2, FileDown, RefreshCw, Mail } from 'lucide-react';
 import { CalloutJob, JobStatus, BusinessSettings } from '../../types';
 import { formatCurrency } from '../../lib/calculations';
 import { downloadInvoicePDF } from '../../lib/exportUtils';
@@ -45,11 +45,15 @@ export const JobList: React.FC<JobListProps> = ({
     }
   };
 
-  const filteredJobs = jobs.filter((job) => {
+  // Only show tax invoices in this view
+  const invoiceJobs = jobs.filter((j) => (j.documentType || 'invoice') === 'invoice');
+
+  const filteredJobs = invoiceJobs.filter((job) => {
     const matchesSearch =
       job.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.jobTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (job.clientEmail && job.clientEmail.toLowerCase().includes(searchTerm.toLowerCase())) ||
       job.workDone.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus =
@@ -245,7 +249,15 @@ export const JobList: React.FC<JobListProps> = ({
                     <h3 className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors">
                       {job.jobTitle}
                     </h3>
-                    <p className="text-xs text-slate-400 font-medium">{job.clientName}</p>
+                    <div className="flex items-center gap-2 flex-wrap text-xs text-slate-400 font-medium mt-0.5">
+                      <span>{job.clientName}</span>
+                      {job.clientEmail && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-indigo-300 bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-800/40">
+                          <Mail className="w-2.5 h-2.5" />
+                          {job.clientEmail}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="text-right">

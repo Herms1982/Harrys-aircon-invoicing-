@@ -1,4 +1,8 @@
-export type JobStatus = 'Draft' | 'Invoiced' | 'Paid' | 'Cancelled';
+export type JobStatus = 'Draft' | 'Invoiced' | 'Paid' | 'Cancelled' | 'Quote' | 'Accepted' | 'Declined' | 'Converted';
+
+export type DocumentType = 'invoice' | 'quote';
+
+export type QuoteStatus = 'Draft' | 'Sent' | 'Accepted' | 'Declined' | 'Converted';
 
 export const STOCK_CATEGORIES = [
   'Electrical',
@@ -58,12 +62,20 @@ export interface CalloutJob {
   invoiceNumber: string; // e.g. "INV-2026-001"
   clientId: string;
   clientName: string;
+  clientEmail?: string;
   clientAddress: string;
   clientPhone: string;
   date: string; // ISO format or YYYY-MM-DD
   status: JobStatus;
   jobTitle: string;
   workDone: string;
+  
+  // Quotation specific
+  documentType?: DocumentType; // 'invoice' | 'quote'
+  quoteNumber?: string; // e.g. "QT-2026-001"
+  validUntil?: string; // Quotation expiration date (e.g. YYYY-MM-DD)
+  quoteNotes?: string; // Special warranty, payment terms, acceptance notes
+  quoteStatus?: QuoteStatus; // 'Draft' | 'Sent' | 'Accepted' | 'Declined' | 'Converted'
   
   // Travel metrics
   kmTravelled: number;
@@ -131,6 +143,9 @@ export interface BusinessSettings {
   defaultHourlyCostInternal: number;
   defaultTaxRate: number;
   nextInvoiceNumber: number;
+  nextQuoteNumber?: number;
+  defaultQuoteValidityDays?: number;
+  defaultQuoteTerms?: string;
   bankName?: string;
   accountType?: string;
   accountName?: string;
